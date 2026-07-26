@@ -10,12 +10,14 @@
 - получение полного текста вакансии и дедупликация;
 - жёсткие фильтры по региону, формату, опыту, зарплате и стоп-словам;
 - объяснимый скоринг роли, навыков и условий;
+- опциональный structured LLM-анализ через Ollama/OpenAI-compatible API;
 - история оценок в SQLite для будущих evals;
 - Telegram-карточка с кнопками и API для обратной связи;
 - HTTP API и разовый CLI-запуск;
 - тесты ключевой бизнес-логики и Docker-образ.
 
 Продуктовые границы и метрики описаны в [docs/PRODUCT.md](docs/PRODUCT.md).
+Подробная инструкция для первого запуска находится в [docs/SETUP_RU.md](docs/SETUP_RU.md).
 
 ## Быстрый старт (Docker-first)
 
@@ -37,6 +39,20 @@ docker compose up --build -d copilot worker
 ```bash
 docker compose run --rm worker job-copilot run --pages 1
 ```
+
+### Локальная LLM в Docker
+
+LLM необязательна: при пустом `LLM_MODEL` работает только детерминированный baseline. Чтобы
+подключить Ollama и Qwen 3.5 9B:
+
+```bash
+docker compose --profile local-llm up -d ollama
+docker compose exec ollama ollama pull qwen3.5:9b
+```
+
+После загрузки укажите `LLM_MODEL=qwen3.5:9b` в `.env` и перезапустите `copilot` и `worker`.
+Модель получает только вакансию, навыки и подтверждённые факты профиля. Ответ проверяется
+Pydantic-схемой, смешивается с baseline и сохраняется вместе с моделью и версией промпта.
 
 После запуска доступны Swagger UI на `http://localhost:8000/docs` и методы:
 

@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: str = "ollama"
     llm_model: str | None = None
+    llm_weight: float = Field(default=0.6, ge=0, le=1)
+    llm_timeout: float = Field(default=90, ge=5, le=600)
     database_path: Path = Path("data/job_copilot.db")
     profile_path: Path = Path("config/profile.json")
     min_notification_score: int = Field(default=65, ge=0, le=100)

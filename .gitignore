@@ -4,8 +4,11 @@ __pycache__/
 .ruff_cache/
 .venv/
 .env
-data/*.db
-data/*.sqlite*
+config/profile.json
+config/private/
+data/*
+!data/.gitkeep
+outputs/
 dist/
 build/
 *.egg-info/

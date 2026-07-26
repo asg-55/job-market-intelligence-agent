@@ -1,0 +1,41 @@
+services:
+  copilot:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - path: .env
+        required: false
+    command: ["job-copilot", "watch", "--interval", "43200"]
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+
+  tests:
+    build:
+      context: .
+      target: test
+    profiles: ["test"]
+
+  lint:
+    build:
+      context: .
+      target: lint
+    profiles: ["test"]

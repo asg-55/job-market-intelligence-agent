@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build test image
+        run: docker build --target test -t job-copilot-test .
+      - name: Run tests
+        run: docker run --rm job-copilot-test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build lint image
+        run: docker build --target lint -t job-copilot-lint .
+      - name: Run Ruff
+        run: docker run --rm job-copilot-lint

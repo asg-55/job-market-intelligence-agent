@@ -1,0 +1,31 @@
+{
+  "name": "Candidate",
+  "target_roles": ["AI Engineer", "LLM Engineer", "Prompt Engineer"],
+  "skills": [
+    "Python", "LLM", "RAG", "Ollama", "Docker", "Prompt Engineering",
+    "n8n", "REST API", "Git", "industrial automation"
+  ],
+  "skill_aliases": {
+    "REST API": ["REST", "API", "FastAPI"],
+    "LLM": ["large language model", "generative AI", "генеративный ИИ"],
+    "industrial automation": ["АСУ ТП", "промышленная автоматизация"]
+  },
+  "required_terms": [],
+  "excluded_terms": ["data scientist", "системный администратор"],
+  "allowed_area_ids": [],
+  "remote_only": false,
+  "accepted_experience_ids": ["noExperience", "between1And3"],
+  "minimum_salary": null,
+  "salary_currency": "RUR",
+  "verified_facts": [
+    "Built a local RAG assistant that processes multiple document formats"
+  ],
+  "prohibited_claims": [
+    "Do not invent commercial experience, metrics, employers, or technologies"
+  ],
+  "searches": [
+    {"text": "AI engineer LLM", "area": null, "period": 3},
+    {"text": "RAG engineer Python", "area": null, "period": 3},
+    {"text": "prompt engineer", "area": null, "period": 3}
+  ]
+}

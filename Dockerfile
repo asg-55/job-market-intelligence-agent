@@ -4,18 +4,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir .
+RUN --mount=type=cache,target=/root/.cache/pip pip install .
 COPY config ./config
 RUN mkdir -p /app/data
 
 FROM base AS test
+RUN --mount=type=cache,target=/root/.cache/pip pip install "pytest>=8.3,<9"
 COPY tests ./tests
-RUN pip install --no-cache-dir "pytest>=8.3,<9"
 CMD ["pytest", "-q"]
 
 FROM base AS lint
+RUN --mount=type=cache,target=/root/.cache/pip pip install "ruff>=0.8,<1"
 COPY tests ./tests
-RUN pip install --no-cache-dir "ruff>=0.8,<1"
 CMD ["ruff", "check", "."]
 
 FROM base AS runtime

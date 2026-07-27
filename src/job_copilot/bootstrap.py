@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .config import Settings
+from .cover_letter import OpenAICompatibleCoverLetterGenerator
 from .database import Repository
 from .hh import HHClient
 from .llm import OpenAICompatibleEvaluator
@@ -20,6 +21,7 @@ class AppContainer:
     hh: HHClient
     notifier: TelegramNotifier | None
     llm_evaluator: OpenAICompatibleEvaluator | None
+    cover_letter_generator: OpenAICompatibleCoverLetterGenerator | None
     pipeline: MonitoringPipeline
 
     async def close(self) -> None:
@@ -28,6 +30,8 @@ class AppContainer:
             await self.notifier.close()
         if self.llm_evaluator:
             await self.llm_evaluator.close()
+        if self.cover_letter_generator:
+            await self.cover_letter_generator.close()
 
 
 def build_container(settings: Settings) -> AppContainer:
@@ -42,12 +46,19 @@ def build_container(settings: Settings) -> AppContainer:
             feedback_enabled=bool(settings.telegram_webhook_secret),
         )
     llm_evaluator = None
+    cover_letter_generator = None
     if settings.llm_model:
         llm_evaluator = OpenAICompatibleEvaluator(
             settings.llm_base_url,
             settings.llm_api_key,
             settings.llm_model,
             llm_weight=settings.llm_weight,
+            timeout=settings.llm_timeout,
+        )
+        cover_letter_generator = OpenAICompatibleCoverLetterGenerator(
+            settings.llm_base_url,
+            settings.llm_api_key,
+            settings.llm_model,
             timeout=settings.llm_timeout,
         )
     pipeline = MonitoringPipeline(
@@ -59,5 +70,12 @@ def build_container(settings: Settings) -> AppContainer:
         settings.min_notification_score,
     )
     return AppContainer(
-        settings, profile_store, repository, hh, notifier, llm_evaluator, pipeline
+        settings=settings,
+        profile_store=profile_store,
+        repository=repository,
+        hh=hh,
+        notifier=notifier,
+        llm_evaluator=llm_evaluator,
+        cover_letter_generator=cover_letter_generator,
+        pipeline=pipeline,
     )

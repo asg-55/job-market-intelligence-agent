@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -38,6 +38,21 @@ class FeedbackRequest(BaseModel):
 class ProfileResponse(BaseModel):
     profile: CandidateProfile
     version: str
+
+
+class CoverLetterRequest(BaseModel):
+    language: Literal["ru", "en"] = "ru"
+    tone: Literal["professional", "concise", "warm"] = "professional"
+
+
+class CoverLetterResponse(BaseModel):
+    id: int
+    vacancy_id: str
+    profile_version: str
+    status: Literal["draft"] = "draft"
+    text: str
+    fact_trace: list[dict[str, Any]]
+    metadata: dict[str, Any]
 
 
 @app.get("/health")
@@ -82,6 +97,56 @@ def feedback(vacancy_id: str, payload: FeedbackRequest, request: Request) -> Non
     if not current.repository.has_vacancy(vacancy_id):
         raise HTTPException(status_code=404, detail="Vacancy not found")
     current.repository.add_feedback(vacancy_id, payload.action, payload.note)
+
+
+@app.post("/vacancies/{vacancy_id}/cover-letter", response_model=CoverLetterResponse)
+async def generate_cover_letter(
+    vacancy_id: str, payload: CoverLetterRequest, request: Request
+) -> CoverLetterResponse:
+    current = container(request)
+    vacancy = current.repository.get_vacancy(vacancy_id)
+    if vacancy is None:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+    if current.cover_letter_generator is None:
+        raise HTTPException(status_code=503, detail="Configure LLM_MODEL first")
+
+    profile = current.profile_store.load()
+    try:
+        generated = await current.cover_letter_generator.generate(
+            vacancy, profile, language=payload.language, tone=payload.tone
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    profile_version = profile.fingerprint()
+    fact_trace = [item.model_dump() for item in generated.fact_trace]
+    metadata = {
+        "model": generated.model,
+        "prompt_version": generated.prompt_version,
+        "usage": generated.usage,
+        "language": payload.language,
+        "tone": payload.tone,
+    }
+    draft_id = current.repository.save_cover_letter(
+        vacancy_id, profile_version, generated.text, fact_trace, metadata
+    )
+    return CoverLetterResponse(
+        id=draft_id,
+        vacancy_id=vacancy_id,
+        profile_version=profile_version,
+        text=generated.text,
+        fact_trace=fact_trace,
+        metadata=metadata,
+    )
+
+
+@app.get("/cover-letters/{draft_id}", response_model=CoverLetterResponse)
+def get_cover_letter(draft_id: int, request: Request) -> CoverLetterResponse:
+    draft = container(request).repository.get_cover_letter(draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Cover-letter draft not found")
+    draft["text"] = draft.pop("content")
+    return CoverLetterResponse.model_validate(draft)
 
 
 @app.post("/telegram/webhook", include_in_schema=False)

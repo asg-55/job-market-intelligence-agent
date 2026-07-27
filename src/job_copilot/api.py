@@ -5,7 +5,7 @@ from hashlib import sha256
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .bootstrap import AppContainer, build_container
 from .config import CandidateProfile, get_settings
@@ -56,15 +56,58 @@ class CoverLetterResponse(BaseModel):
     metadata: dict[str, Any]
 
 
+class ResumeCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    target_roles: list[str] = Field(default_factory=list, max_length=20)
+    content: str = Field(min_length=50, max_length=30_000)
+
+
+class ResumeUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    target_roles: list[str] | None = Field(default=None, max_length=20)
+    content: str | None = Field(default=None, min_length=50, max_length=30_000)
+    archived: bool | None = None
+
+    @model_validator(mode="after")
+    def require_change(self) -> ResumeUpdateRequest:
+        if not self.model_fields_set:
+            raise ValueError("Provide at least one field to update")
+        return self
+
+
+class ResumeSummaryResponse(BaseModel):
+    id: int
+    name: str
+    target_roles: list[str]
+    content_sha256: str
+    version: int
+    archived: bool
+    created_at: str
+    updated_at: str
+
+
+class ResumeResponse(ResumeSummaryResponse):
+    content: str
+
+
 class ResumeAdviceRequest(BaseModel):
-    resume_text: str = Field(min_length=50, max_length=30_000)
+    resume_id: int | None = Field(default=None, ge=1)
+    resume_text: str | None = Field(default=None, min_length=50, max_length=30_000)
     language: Literal["ru", "en"] = "ru"
+
+    @model_validator(mode="after")
+    def require_one_source(self) -> ResumeAdviceRequest:
+        if (self.resume_id is None) == (self.resume_text is None):
+            raise ValueError("Provide exactly one of resume_id or resume_text")
+        return self
 
 
 class ResumeAdviceResponse(BaseModel):
     id: int
     vacancy_id: str
     profile_version: str
+    resume_id: int | None = None
+    resume_version: int | None = None
     resume_sha256: str
     status: Literal["draft"] = "draft"
     result: dict[str, Any]
@@ -99,6 +142,66 @@ def update_profile(
 ) -> ProfileResponse:
     saved = container(request).profile_store.patch(changes)
     return ProfileResponse(profile=saved, version=saved.fingerprint())
+
+
+@app.post("/resumes", response_model=ResumeResponse, status_code=201)
+def create_resume(payload: ResumeCreateRequest, request: Request) -> ResumeResponse:
+    try:
+        resume = container(request).repository.create_resume(
+            payload.name, payload.target_roles, payload.content
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return ResumeResponse.model_validate(resume)
+
+
+@app.get("/resumes", response_model=list[ResumeSummaryResponse])
+def list_resumes(
+    request: Request, include_archived: bool = Query(default=False)
+) -> list[ResumeSummaryResponse]:
+    rows = container(request).repository.list_resumes(include_archived=include_archived)
+    return [ResumeSummaryResponse.model_validate(row) for row in rows]
+
+
+@app.get("/resumes/{resume_id}", response_model=ResumeResponse)
+def get_resume(resume_id: int, request: Request) -> ResumeResponse:
+    resume = container(request).repository.get_resume(resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return ResumeResponse.model_validate(resume)
+
+
+@app.put("/resumes/{resume_id}", response_model=ResumeResponse)
+def replace_resume(
+    resume_id: int, payload: ResumeCreateRequest, request: Request
+) -> ResumeResponse:
+    try:
+        resume = container(request).repository.update_resume(
+            resume_id,
+            name=payload.name,
+            target_roles=payload.target_roles,
+            content=payload.content,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return ResumeResponse.model_validate(resume)
+
+
+@app.patch("/resumes/{resume_id}", response_model=ResumeResponse)
+def update_resume(
+    resume_id: int, payload: ResumeUpdateRequest, request: Request
+) -> ResumeResponse:
+    try:
+        resume = container(request).repository.update_resume(
+            resume_id, **payload.model_dump(exclude_unset=True)
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return ResumeResponse.model_validate(resume)
 
 
 @app.post("/monitor/run")
@@ -176,16 +279,30 @@ async def generate_resume_advice(
     if current.resume_advisor is None:
         raise HTTPException(status_code=503, detail="Configure LLM_MODEL first")
 
+    stored_resume = None
+    if payload.resume_id is not None:
+        stored_resume = current.repository.get_resume(payload.resume_id)
+        if stored_resume is None:
+            raise HTTPException(status_code=404, detail="Resume not found")
+        if stored_resume["archived"]:
+            raise HTTPException(status_code=409, detail="Archived resume cannot be analyzed")
+        resume_text = stored_resume["content"]
+        resume_hash = stored_resume["content_sha256"]
+        resume_version = stored_resume["version"]
+    else:
+        resume_text = payload.resume_text or ""
+        resume_hash = f"sha256:{sha256(resume_text.encode('utf-8')).hexdigest()}"
+        resume_version = None
+
     profile = current.profile_store.load()
     try:
         generated = await current.resume_advisor.generate(
-            vacancy, profile, payload.resume_text, language=payload.language
+            vacancy, profile, resume_text, language=payload.language
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
     profile_version = profile.fingerprint()
-    resume_hash = f"sha256:{sha256(payload.resume_text.encode('utf-8')).hexdigest()}"
     result = generated.model_dump(
         exclude={"model", "prompt_version", "usage"}, mode="json"
     )
@@ -194,15 +311,23 @@ async def generate_resume_advice(
         "prompt_version": generated.prompt_version,
         "usage": generated.usage,
         "language": payload.language,
-        "source_resume_stored": False,
+        "source_resume_stored": stored_resume is not None,
     }
     advice_id = current.repository.save_resume_advice(
-        vacancy_id, profile_version, resume_hash, result, metadata
+        vacancy_id,
+        profile_version,
+        resume_hash,
+        result,
+        metadata,
+        resume_id=payload.resume_id,
+        resume_version=resume_version,
     )
     return ResumeAdviceResponse(
         id=advice_id,
         vacancy_id=vacancy_id,
         profile_version=profile_version,
+        resume_id=payload.resume_id,
+        resume_version=resume_version,
         resume_sha256=resume_hash,
         result=result,
         metadata=metadata,

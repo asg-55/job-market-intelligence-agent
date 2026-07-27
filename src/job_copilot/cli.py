@@ -7,6 +7,8 @@ import shutil
 from dataclasses import asdict
 from pathlib import Path
 
+import httpx
+
 from .bootstrap import build_container
 from .config import get_settings
 
@@ -14,7 +16,7 @@ from .config import get_settings
 async def _run(pages: int) -> None:
     current = build_container(get_settings())
     try:
-        summary = await current.pipeline.run(current.profile, pages=pages)
+        summary = await current.pipeline.run(current.profile_store.load(), pages=pages)
         print(json.dumps(asdict(summary), ensure_ascii=False, indent=2))
     finally:
         await current.close()
@@ -29,6 +31,30 @@ async def _watch(pages: int, interval: int) -> None:
         except Exception as error:
             print(f"Monitoring run failed: {error!r}", flush=True)
         await asyncio.sleep(interval)
+
+
+async def _telegram_chat_ids() -> None:
+    token = get_settings().telegram_bot_token
+    if not token:
+        raise SystemExit("Set TELEGRAM_BOT_TOKEN in .env first")
+    async with httpx.AsyncClient(
+        base_url=f"https://api.telegram.org/bot{token}", timeout=20
+    ) as client:
+        response = await client.get("/getUpdates")
+        response.raise_for_status()
+        updates = response.json().get("result", [])
+    chats: dict[int, dict] = {}
+    for update in updates:
+        message = update.get("message") or update.get("edited_message")
+        if message and message.get("chat"):
+            chat = message["chat"]
+            chats[chat["id"]] = chat
+    if not chats:
+        print("No chats found. Send /start to the bot and run this command again.")
+        return
+    for chat_id, chat in chats.items():
+        label = chat.get("username") or chat.get("title") or chat.get("first_name") or "chat"
+        print(f"TELEGRAM_CHAT_ID={chat_id}  # {label}")
 
 
 def _init_profile(destination: Path) -> None:
@@ -50,6 +76,7 @@ def main() -> None:
     watch_parser.add_argument("--interval", type=int, default=43200, help="Seconds between runs")
     init_parser = subparsers.add_parser("init-profile", help="Create an editable profile")
     init_parser.add_argument("--path", type=Path, default=Path("config/profile.json"))
+    subparsers.add_parser("telegram-chat-id", help="Find chat IDs from recent bot messages")
     args = parser.parse_args()
     if args.command == "run":
         asyncio.run(_run(args.pages))
@@ -57,6 +84,8 @@ def main() -> None:
         asyncio.run(_watch(args.pages, args.interval))
     elif args.command == "init-profile":
         _init_profile(args.path)
+    elif args.command == "telegram-chat-id":
+        asyncio.run(_telegram_chat_ids())
 
 
 if __name__ == "__main__":

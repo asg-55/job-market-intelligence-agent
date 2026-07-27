@@ -9,9 +9,15 @@ from .domain import ScoreResult, Vacancy
 
 class TelegramNotifier:
     def __init__(
-        self, token: str, chat_id: str, client: httpx.AsyncClient | None = None
+        self,
+        token: str,
+        chat_id: str,
+        client: httpx.AsyncClient | None = None,
+        *,
+        feedback_enabled: bool = False,
     ) -> None:
         self.chat_id = chat_id
+        self.feedback_enabled = feedback_enabled
         self._client = client or httpx.AsyncClient(
             base_url=f"https://api.telegram.org/bot{token}", timeout=20
         )
@@ -33,15 +39,14 @@ class TelegramNotifier:
             f"<b>Совпало:</b> {html.escape(strengths)}\n"
             f"<b>Пробелы:</b> {html.escape(gaps)}"
         )
-        keyboard = {
-            "inline_keyboard": [
-                [{"text": "Открыть вакансию", "url": vacancy.url}],
+        rows = [[{"text": "Открыть вакансию", "url": vacancy.url}]]
+        if self.feedback_enabled:
+            rows.append(
                 [
                     {"text": "👍 Подходит", "callback_data": f"fit:{vacancy.id}"},
                     {"text": "👎 Не подходит", "callback_data": f"skip:{vacancy.id}"},
-                ],
-            ]
-        }
+                ]
+            )
         response = await self._client.post(
             "/sendMessage",
             json={
@@ -49,7 +54,7 @@ class TelegramNotifier:
                 "text": message,
                 "parse_mode": "HTML",
                 "disable_web_page_preview": True,
-                "reply_markup": keyboard,
+                "reply_markup": {"inline_keyboard": rows},
             },
         )
         response.raise_for_status()

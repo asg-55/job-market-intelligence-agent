@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Annotated, Any
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from .bootstrap import AppContainer, build_container
-from .config import get_settings
+from .config import CandidateProfile, get_settings
 
 
 @asynccontextmanager
@@ -34,6 +35,11 @@ class FeedbackRequest(BaseModel):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class ProfileResponse(BaseModel):
+    profile: CandidateProfile
+    version: str
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -44,10 +50,30 @@ def vacancies(request: Request, limit: int = Query(default=50, ge=1, le=200)):
     return container(request).repository.list_vacancies(limit)
 
 
+@app.get("/profile")
+def get_profile(request: Request) -> ProfileResponse:
+    profile = container(request).profile_store.load()
+    return ProfileResponse(profile=profile, version=profile.fingerprint())
+
+
+@app.put("/profile")
+def replace_profile(profile: CandidateProfile, request: Request) -> ProfileResponse:
+    saved = container(request).profile_store.save(profile)
+    return ProfileResponse(profile=saved, version=saved.fingerprint())
+
+
+@app.patch("/profile")
+def update_profile(
+    request: Request, changes: Annotated[dict[str, Any], Body(min_length=1)]
+) -> ProfileResponse:
+    saved = container(request).profile_store.patch(changes)
+    return ProfileResponse(profile=saved, version=saved.fingerprint())
+
+
 @app.post("/monitor/run")
 async def run_monitor(request: Request, pages: int = Query(default=1, ge=1, le=10)):
     current = container(request)
-    return await current.pipeline.run(current.profile, pages=pages)
+    return await current.pipeline.run(current.profile_store.load(), pages=pages)
 
 
 @app.post("/vacancies/{vacancy_id}/feedback", status_code=204)

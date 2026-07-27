@@ -7,9 +7,9 @@ services:
       - path: .env
         required: false
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ./config:/app/config:ro
+      - ./config:/app/config
       - ./data:/app/data
     restart: unless-stopped
 
@@ -22,7 +22,7 @@ services:
         required: false
     command: ["job-copilot", "watch", "--interval", "43200"]
     volumes:
-      - ./config:/app/config:ro
+      - ./config:/app/config
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
@@ -39,3 +39,15 @@ services:
       context: .
       target: lint
     profiles: ["test"]
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

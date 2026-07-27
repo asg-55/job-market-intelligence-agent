@@ -53,6 +53,17 @@ class Repository:
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
                 );
+                CREATE TABLE IF NOT EXISTS cover_letters (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    vacancy_id TEXT NOT NULL,
+                    profile_version TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    content TEXT NOT NULL,
+                    fact_trace_json TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
+                );
                 """
             )
 
@@ -71,6 +82,15 @@ class Repository:
                 (vacancy_id, profile_version),
             ).fetchone()
         return row is not None
+
+    def get_vacancy(self, vacancy_id: str) -> Vacancy | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM vacancies WHERE id = ?", (vacancy_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return Vacancy(**json.loads(row["payload_json"]))
 
     def save_evaluation(
         self, vacancy: Vacancy, result: ScoreResult, profile_version: str = "v1"
@@ -113,6 +133,43 @@ class Repository:
                 "INSERT INTO feedback(vacancy_id, action, note) VALUES (?, ?, ?)",
                 (vacancy_id, action, note),
             )
+
+    def save_cover_letter(
+        self,
+        vacancy_id: str,
+        profile_version: str,
+        content: str,
+        fact_trace: list[dict[str, Any]],
+        metadata: dict[str, Any],
+    ) -> int:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO cover_letters(
+                    vacancy_id, profile_version, content, fact_trace_json, metadata_json
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    vacancy_id,
+                    profile_version,
+                    content,
+                    json.dumps(fact_trace, ensure_ascii=False),
+                    json.dumps(metadata, ensure_ascii=False),
+                ),
+            )
+            return int(cursor.lastrowid)
+
+    def get_cover_letter(self, draft_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM cover_letters WHERE id = ?", (draft_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["fact_trace"] = json.loads(result.pop("fact_trace_json"))
+        result["metadata"] = json.loads(result.pop("metadata_json"))
+        return result
 
     def list_vacancies(self, limit: int = 50) -> list[dict[str, Any]]:
         with self.connect() as connection:

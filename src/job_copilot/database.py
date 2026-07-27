@@ -64,6 +64,17 @@ class Repository:
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
                 );
+                CREATE TABLE IF NOT EXISTS resume_advice (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    vacancy_id TEXT NOT NULL,
+                    profile_version TEXT NOT NULL,
+                    resume_sha256 TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    result_json TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
+                );
                 """
             )
 
@@ -168,6 +179,43 @@ class Repository:
             return None
         result = dict(row)
         result["fact_trace"] = json.loads(result.pop("fact_trace_json"))
+        result["metadata"] = json.loads(result.pop("metadata_json"))
+        return result
+
+    def save_resume_advice(
+        self,
+        vacancy_id: str,
+        profile_version: str,
+        resume_sha256: str,
+        result: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> int:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO resume_advice(
+                    vacancy_id, profile_version, resume_sha256, result_json, metadata_json
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    vacancy_id,
+                    profile_version,
+                    resume_sha256,
+                    json.dumps(result, ensure_ascii=False),
+                    json.dumps(metadata, ensure_ascii=False),
+                ),
+            )
+            return int(cursor.lastrowid)
+
+    def get_resume_advice(self, advice_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM resume_advice WHERE id = ?", (advice_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["result"] = json.loads(result.pop("result_json"))
         result["metadata"] = json.loads(result.pop("metadata_json"))
         return result
 

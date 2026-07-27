@@ -1,12 +1,12 @@
 import asyncio
 
 import httpx
+from test_scoring import profile, vacancy
 
 from job_copilot.config import SearchQuery
 from job_copilot.database import Repository
 from job_copilot.pipeline import MonitoringPipeline
 from job_copilot.scoring import ExplainableScorer
-from test_scoring import profile, vacancy
 
 
 class FakeHHClient:

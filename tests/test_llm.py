@@ -2,9 +2,9 @@ import asyncio
 import json
 
 import httpx
+from test_scoring import profile, vacancy
 
 from job_copilot.llm import OpenAICompatibleEvaluator
-from test_scoring import profile, vacancy
 
 
 def test_structured_evaluator_blends_score_and_keeps_audit_metadata() -> None:

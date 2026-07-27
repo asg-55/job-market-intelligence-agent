@@ -1,6 +1,7 @@
+from test_scoring import vacancy
+
 from job_copilot.database import Repository
 from job_copilot.domain import ScoreResult
-from test_scoring import vacancy
 
 
 def test_repository_deduplicates_vacancy_and_keeps_evaluations(tmp_path) -> None:

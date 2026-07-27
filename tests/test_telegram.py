@@ -2,10 +2,10 @@ import asyncio
 import json
 
 import httpx
+from test_scoring import profile, vacancy
 
 from job_copilot.scoring import ExplainableScorer
 from job_copilot.telegram import TelegramNotifier
-from test_scoring import profile, vacancy
 
 
 def _send_and_capture(feedback_enabled: bool) -> dict:

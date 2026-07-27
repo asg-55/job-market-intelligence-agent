@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -64,7 +64,7 @@ def replace_profile(profile: CandidateProfile, request: Request) -> ProfileRespo
 
 @app.patch("/profile")
 def update_profile(
-    request: Request, changes: dict[str, Any] = Body(min_length=1)
+    request: Request, changes: Annotated[dict[str, Any], Body(min_length=1)]
 ) -> ProfileResponse:
     saved = container(request).profile_store.patch(changes)
     return ProfileResponse(profile=saved, version=saved.fingerprint())

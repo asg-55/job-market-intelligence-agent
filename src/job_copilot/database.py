@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -64,19 +65,43 @@ class Repository:
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
                 );
+                CREATE TABLE IF NOT EXISTS resumes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    target_roles_json TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    content_sha256 TEXT NOT NULL,
+                    version INTEGER NOT NULL DEFAULT 1,
+                    archived INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
                 CREATE TABLE IF NOT EXISTS resume_advice (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     vacancy_id TEXT NOT NULL,
                     profile_version TEXT NOT NULL,
+                    resume_id INTEGER,
+                    resume_version INTEGER,
                     resume_sha256 TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'draft',
                     result_json TEXT NOT NULL,
                     metadata_json TEXT NOT NULL,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
+                    FOREIGN KEY(vacancy_id) REFERENCES vacancies(id),
+                    FOREIGN KEY(resume_id) REFERENCES resumes(id)
                 );
                 """
             )
+            self._ensure_column(connection, "resume_advice", "resume_id", "INTEGER")
+            self._ensure_column(connection, "resume_advice", "resume_version", "INTEGER")
+
+    @staticmethod
+    def _ensure_column(
+        connection: sqlite3.Connection, table: str, column: str, definition: str
+    ) -> None:
+        columns = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})")}
+        if column not in columns:
+            connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def has_vacancy(self, vacancy_id: str) -> bool:
         with self.connect() as connection:
@@ -182,6 +207,108 @@ class Repository:
         result["metadata"] = json.loads(result.pop("metadata_json"))
         return result
 
+    def create_resume(
+        self, name: str, target_roles: list[str], content: str
+    ) -> dict[str, Any]:
+        content_hash = self._content_hash(content)
+        try:
+            with self.connect() as connection:
+                cursor = connection.execute(
+                    """
+                    INSERT INTO resumes(name, target_roles_json, content, content_sha256)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        name,
+                        json.dumps(target_roles, ensure_ascii=False),
+                        content,
+                        content_hash,
+                    ),
+                )
+                resume_id = int(cursor.lastrowid)
+        except sqlite3.IntegrityError as error:
+            raise ValueError("A resume with this name already exists") from error
+        resume = self.get_resume(resume_id)
+        if resume is None:  # pragma: no cover - guarded by the successful insert
+            raise RuntimeError("Created resume could not be loaded")
+        return resume
+
+    def list_resumes(self, *, include_archived: bool = False) -> list[dict[str, Any]]:
+        where = "" if include_archived else "WHERE archived = 0"
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT id, name, target_roles_json, content_sha256, version, archived,
+                       created_at, updated_at
+                FROM resumes {where}
+                ORDER BY archived, updated_at DESC, id DESC
+                """
+            ).fetchall()
+        return [self._resume_row(row, include_content=False) for row in rows]
+
+    def get_resume(self, resume_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM resumes WHERE id = ?", (resume_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return self._resume_row(row, include_content=True)
+
+    def update_resume(
+        self,
+        resume_id: int,
+        *,
+        name: str | None = None,
+        target_roles: list[str] | None = None,
+        content: str | None = None,
+        archived: bool | None = None,
+    ) -> dict[str, Any] | None:
+        current = self.get_resume(resume_id)
+        if current is None:
+            return None
+        next_name = current["name"] if name is None else name
+        next_roles = current["target_roles"] if target_roles is None else target_roles
+        next_content = current["content"] if content is None else content
+        next_archived = current["archived"] if archived is None else archived
+        changed_document = any(value is not None for value in (name, target_roles, content))
+        next_version = current["version"] + 1 if changed_document else current["version"]
+        try:
+            with self.connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE resumes
+                    SET name = ?, target_roles_json = ?, content = ?, content_sha256 = ?,
+                        version = ?, archived = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (
+                        next_name,
+                        json.dumps(next_roles, ensure_ascii=False),
+                        next_content,
+                        self._content_hash(next_content),
+                        next_version,
+                        int(next_archived),
+                        resume_id,
+                    ),
+                )
+        except sqlite3.IntegrityError as error:
+            raise ValueError("A resume with this name already exists") from error
+        return self.get_resume(resume_id)
+
+    @staticmethod
+    def _content_hash(content: str) -> str:
+        return f"sha256:{sha256(content.encode('utf-8')).hexdigest()}"
+
+    @staticmethod
+    def _resume_row(row: sqlite3.Row, *, include_content: bool) -> dict[str, Any]:
+        result = dict(row)
+        result["target_roles"] = json.loads(result.pop("target_roles_json"))
+        result["archived"] = bool(result["archived"])
+        if not include_content:
+            result.pop("content", None)
+        return result
+
     def save_resume_advice(
         self,
         vacancy_id: str,
@@ -189,17 +316,23 @@ class Repository:
         resume_sha256: str,
         result: dict[str, Any],
         metadata: dict[str, Any],
+        *,
+        resume_id: int | None = None,
+        resume_version: int | None = None,
     ) -> int:
         with self.connect() as connection:
             cursor = connection.execute(
                 """
                 INSERT INTO resume_advice(
-                    vacancy_id, profile_version, resume_sha256, result_json, metadata_json
-                ) VALUES (?, ?, ?, ?, ?)
+                    vacancy_id, profile_version, resume_id, resume_version,
+                    resume_sha256, result_json, metadata_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     vacancy_id,
                     profile_version,
+                    resume_id,
+                    resume_version,
                     resume_sha256,
                     json.dumps(result, ensure_ascii=False),
                     json.dumps(metadata, ensure_ascii=False),

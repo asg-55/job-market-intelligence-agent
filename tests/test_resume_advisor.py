@@ -3,18 +3,18 @@ import json
 from types import SimpleNamespace
 
 import httpx
-from job_copilot.resume_advisor import (
-    FactBackedBullet,
-    GeneratedResumeAdvice,
-    OpenAICompatibleResumeAdvisor,
-    ResumeFactTrace,
-)
 from test_scoring import profile, vacancy
 
 from job_copilot.api import app
 from job_copilot.database import Repository
 from job_copilot.domain import ScoreResult
 from job_copilot.profile_store import ProfileStore
+from job_copilot.resume_advisor import (
+    FactBackedBullet,
+    GeneratedResumeAdvice,
+    OpenAICompatibleResumeAdvisor,
+    ResumeFactTrace,
+)
 
 
 def test_advisor_returns_fact_traces_and_profile_skills() -> None:

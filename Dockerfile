@@ -14,7 +14,7 @@ COPY tests ./tests
 CMD ["pytest", "-q"]
 
 FROM base AS lint
-RUN --mount=type=cache,target=/root/.cache/pip pip install "ruff>=0.8,<1"
+RUN --mount=type=cache,target=/root/.cache/pip pip install "ruff==0.16.0"
 COPY tests ./tests
 CMD ["ruff", "check", "."]
 

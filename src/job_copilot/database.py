@@ -63,6 +63,15 @@ class Repository:
             ).fetchone()
         return row is not None
 
+    def has_evaluation(self, vacancy_id: str, profile_version: str) -> bool:
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT 1 FROM evaluations
+                   WHERE vacancy_id = ? AND profile_version = ? LIMIT 1""",
+                (vacancy_id, profile_version),
+            ).fetchone()
+        return row is not None
+
     def save_evaluation(
         self, vacancy: Vacancy, result: ScoreResult, profile_version: str = "v1"
     ) -> bool:

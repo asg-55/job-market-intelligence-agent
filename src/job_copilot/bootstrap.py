@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .config import CandidateProfile, Settings
+from .config import Settings
 from .database import Repository
 from .hh import HHClient
 from .llm import OpenAICompatibleEvaluator
 from .pipeline import MonitoringPipeline
+from .profile_store import ProfileStore
 from .scoring import ExplainableScorer
 from .telegram import TelegramNotifier
 
@@ -14,7 +15,7 @@ from .telegram import TelegramNotifier
 @dataclass
 class AppContainer:
     settings: Settings
-    profile: CandidateProfile
+    profile_store: ProfileStore
     repository: Repository
     hh: HHClient
     notifier: TelegramNotifier | None
@@ -30,7 +31,7 @@ class AppContainer:
 
 
 def build_container(settings: Settings) -> AppContainer:
-    profile = CandidateProfile.from_file(settings.profile_path)
+    profile_store = ProfileStore(settings.profile_path, "config/profile.example.json")
     repository = Repository(settings.database_path)
     hh = HHClient(settings.hh_base_url, settings.hh_user_agent, settings.hh_access_token)
     notifier = None
@@ -58,5 +59,5 @@ def build_container(settings: Settings) -> AppContainer:
         settings.min_notification_score,
     )
     return AppContainer(
-        settings, profile, repository, hh, notifier, llm_evaluator, pipeline
+        settings, profile_store, repository, hh, notifier, llm_evaluator, pipeline
     )

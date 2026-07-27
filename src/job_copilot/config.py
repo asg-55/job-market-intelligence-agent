@@ -1,20 +1,25 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class SearchQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     text: str
     area: str | None = None
     period: int = Field(default=3, ge=1, le=30)
 
 
 class CandidateProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = "Candidate"
     target_roles: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
@@ -34,6 +39,12 @@ class CandidateProfile(BaseModel):
     def from_file(cls, path: str | Path) -> CandidateProfile:
         with Path(path).open(encoding="utf-8") as file:
             return cls.model_validate(json.load(file))
+
+    def fingerprint(self) -> str:
+        canonical = json.dumps(
+            self.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        return f"sha256:{sha256(canonical.encode('utf-8')).hexdigest()[:16]}"
 
 
 class Settings(BaseSettings):

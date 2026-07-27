@@ -16,7 +16,7 @@ from .config import get_settings
 async def _run(pages: int) -> None:
     current = build_container(get_settings())
     try:
-        summary = await current.pipeline.run(current.profile, pages=pages)
+        summary = await current.pipeline.run(current.profile_store.load(), pages=pages)
         print(json.dumps(asdict(summary), ensure_ascii=False, indent=2))
     finally:
         await current.close()

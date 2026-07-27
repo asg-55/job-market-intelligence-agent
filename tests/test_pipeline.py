@@ -50,7 +50,7 @@ def test_known_vacancy_is_not_sent_to_llm_again(tmp_path) -> None:
         candidate = profile(searches=[{"text": "LLM engineer"}])
         item = vacancy()
         baseline = ExplainableScorer().score(item, candidate)
-        repository.save_evaluation(item, baseline)
+        repository.save_evaluation(item, baseline, candidate.fingerprint())
         llm = FailingLLMEvaluator()
         pipeline = MonitoringPipeline(
             FakeHHClient(), repository, ExplainableScorer(), llm_evaluator=llm
@@ -62,5 +62,27 @@ def test_known_vacancy_is_not_sent_to_llm_again(tmp_path) -> None:
         assert summary.known == 1
         assert summary.new == 0
         assert llm.calls == 0
+
+    asyncio.run(scenario())
+
+
+def test_profile_change_reevaluates_known_vacancy(tmp_path) -> None:
+    async def scenario() -> None:
+        repository = Repository(tmp_path / "changed-profile.db")
+        original = profile(searches=[{"text": "LLM engineer"}])
+        changed = original.model_copy(update={"skills": [*original.skills, "PostgreSQL"]})
+        item = vacancy()
+        baseline = ExplainableScorer().score(item, original)
+        repository.save_evaluation(item, baseline, original.fingerprint())
+        llm = FailingLLMEvaluator()
+        pipeline = MonitoringPipeline(
+            FakeHHClient(), repository, ExplainableScorer(), llm_evaluator=llm
+        )
+
+        summary = await pipeline.run(changed)
+
+        assert summary.reevaluated == 1
+        assert summary.known == 0
+        assert llm.calls == 1
 
     asyncio.run(scenario())

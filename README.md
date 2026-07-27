@@ -12,6 +12,7 @@
 - объяснимый скоринг роли, навыков и условий;
 - опциональный structured LLM-анализ через Ollama/OpenAI-compatible API;
 - история оценок в SQLite для будущих evals;
+- постоянно редактируемый профиль с hot reload и версионированием оценок;
 - Telegram-карточка с кнопками и API для обратной связи;
 - HTTP API и разовый CLI-запуск;
 - тесты ключевой бизнес-логики и Docker-образ.
@@ -58,6 +59,7 @@ Pydantic-схемой, смешивается с baseline и сохраняет�
 
 - `POST /monitor/run` — выполнить мониторинг;
 - `GET /vacancies` — показать ранжированные вакансии;
+- `GET`, `PUT`, `PATCH /profile` — читать и изменять живой профиль без перезапуска;
 - `POST /vacancies/{id}/feedback` — сохранить `fit`, `skip`, `applied`, `rejected` или `interview`.
 
 Кнопки обратной связи в Telegram используют `POST /telegram/webhook`. Для них нужен публичный

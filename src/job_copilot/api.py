@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from hashlib import sha256
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
@@ -52,6 +53,21 @@ class CoverLetterResponse(BaseModel):
     status: Literal["draft"] = "draft"
     text: str
     fact_trace: list[dict[str, Any]]
+    metadata: dict[str, Any]
+
+
+class ResumeAdviceRequest(BaseModel):
+    resume_text: str = Field(min_length=50, max_length=30_000)
+    language: Literal["ru", "en"] = "ru"
+
+
+class ResumeAdviceResponse(BaseModel):
+    id: int
+    vacancy_id: str
+    profile_version: str
+    resume_sha256: str
+    status: Literal["draft"] = "draft"
+    result: dict[str, Any]
     metadata: dict[str, Any]
 
 
@@ -147,6 +163,58 @@ def get_cover_letter(draft_id: int, request: Request) -> CoverLetterResponse:
         raise HTTPException(status_code=404, detail="Cover-letter draft not found")
     draft["text"] = draft.pop("content")
     return CoverLetterResponse.model_validate(draft)
+
+
+@app.post("/vacancies/{vacancy_id}/resume-advice", response_model=ResumeAdviceResponse)
+async def generate_resume_advice(
+    vacancy_id: str, payload: ResumeAdviceRequest, request: Request
+) -> ResumeAdviceResponse:
+    current = container(request)
+    vacancy = current.repository.get_vacancy(vacancy_id)
+    if vacancy is None:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+    if current.resume_advisor is None:
+        raise HTTPException(status_code=503, detail="Configure LLM_MODEL first")
+
+    profile = current.profile_store.load()
+    try:
+        generated = await current.resume_advisor.generate(
+            vacancy, profile, payload.resume_text, language=payload.language
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    profile_version = profile.fingerprint()
+    resume_hash = f"sha256:{sha256(payload.resume_text.encode('utf-8')).hexdigest()}"
+    result = generated.model_dump(
+        exclude={"model", "prompt_version", "usage"}, mode="json"
+    )
+    metadata = {
+        "model": generated.model,
+        "prompt_version": generated.prompt_version,
+        "usage": generated.usage,
+        "language": payload.language,
+        "source_resume_stored": False,
+    }
+    advice_id = current.repository.save_resume_advice(
+        vacancy_id, profile_version, resume_hash, result, metadata
+    )
+    return ResumeAdviceResponse(
+        id=advice_id,
+        vacancy_id=vacancy_id,
+        profile_version=profile_version,
+        resume_sha256=resume_hash,
+        result=result,
+        metadata=metadata,
+    )
+
+
+@app.get("/resume-advice/{advice_id}", response_model=ResumeAdviceResponse)
+def get_resume_advice(advice_id: int, request: Request) -> ResumeAdviceResponse:
+    advice = container(request).repository.get_resume_advice(advice_id)
+    if advice is None:
+        raise HTTPException(status_code=404, detail="Resume advice not found")
+    return ResumeAdviceResponse.model_validate(advice)
 
 
 @app.post("/telegram/webhook", include_in_schema=False)

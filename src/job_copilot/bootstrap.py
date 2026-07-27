@@ -9,6 +9,7 @@ from .hh import HHClient
 from .llm import OpenAICompatibleEvaluator
 from .pipeline import MonitoringPipeline
 from .profile_store import ProfileStore
+from .resume_advisor import OpenAICompatibleResumeAdvisor
 from .scoring import ExplainableScorer
 from .telegram import TelegramNotifier
 
@@ -22,6 +23,7 @@ class AppContainer:
     notifier: TelegramNotifier | None
     llm_evaluator: OpenAICompatibleEvaluator | None
     cover_letter_generator: OpenAICompatibleCoverLetterGenerator | None
+    resume_advisor: OpenAICompatibleResumeAdvisor | None
     pipeline: MonitoringPipeline
 
     async def close(self) -> None:
@@ -32,6 +34,8 @@ class AppContainer:
             await self.llm_evaluator.close()
         if self.cover_letter_generator:
             await self.cover_letter_generator.close()
+        if self.resume_advisor:
+            await self.resume_advisor.close()
 
 
 def build_container(settings: Settings) -> AppContainer:
@@ -47,6 +51,7 @@ def build_container(settings: Settings) -> AppContainer:
         )
     llm_evaluator = None
     cover_letter_generator = None
+    resume_advisor = None
     if settings.llm_model:
         llm_evaluator = OpenAICompatibleEvaluator(
             settings.llm_base_url,
@@ -56,6 +61,12 @@ def build_container(settings: Settings) -> AppContainer:
             timeout=settings.llm_timeout,
         )
         cover_letter_generator = OpenAICompatibleCoverLetterGenerator(
+            settings.llm_base_url,
+            settings.llm_api_key,
+            settings.llm_model,
+            timeout=settings.llm_timeout,
+        )
+        resume_advisor = OpenAICompatibleResumeAdvisor(
             settings.llm_base_url,
             settings.llm_api_key,
             settings.llm_model,
@@ -77,5 +88,6 @@ def build_container(settings: Settings) -> AppContainer:
         notifier=notifier,
         llm_evaluator=llm_evaluator,
         cover_letter_generator=cover_letter_generator,
+        resume_advisor=resume_advisor,
         pipeline=pipeline,
     )

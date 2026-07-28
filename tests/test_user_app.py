@@ -20,5 +20,8 @@ def test_user_app_and_assets_are_served() -> None:
         assert "--forest" in stylesheet.text
         assert script.status_code == 200
         assert "renderResumes" in script.text
+        assert "openVacancy" in script.text
+        assert "generate-advice" in page.text
+        assert "run-monitor" in page.text
 
     asyncio.run(scenario())

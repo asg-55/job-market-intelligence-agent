@@ -428,7 +428,15 @@ class Repository:
             rows = connection.execute(
                 """
                 SELECT v.id, v.name, v.employer, v.url, v.published_at,
-                       e.profile_version, e.score, e.result_json, e.created_at
+                       e.profile_version, e.score, e.result_json, e.created_at,
+                       (
+                           SELECT f.action FROM feedback f
+                           WHERE f.vacancy_id = v.id ORDER BY f.id DESC LIMIT 1
+                       ) AS feedback_action,
+                       (
+                           SELECT f.note FROM feedback f
+                           WHERE f.vacancy_id = v.id ORDER BY f.id DESC LIMIT 1
+                       ) AS feedback_note
                 FROM vacancies v
                 JOIN evaluations e ON e.id = (
                     SELECT MAX(id) FROM evaluations WHERE vacancy_id = v.id

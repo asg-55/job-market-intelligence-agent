@@ -1,5 +1,8 @@
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from job_copilot.config import CandidateProfile
 from job_copilot.profile_store import ProfileStore
 
@@ -41,3 +44,37 @@ def test_patch_keeps_unspecified_fields_and_changes_version(tmp_path) -> None:
     assert after.skills == ["Python"]
     assert after.remote_only
     assert after.fingerprint() != before.fingerprint()
+
+
+def test_search_profiles_replace_legacy_searches_and_require_unique_keys() -> None:
+    candidate = CandidateProfile(
+        searches=[{"text": "legacy query"}],
+        search_profiles=[
+            {
+                "key": "ai-product",
+                "name": "AI Product",
+                "resume_id": 3,
+                "searches": [{"text": "AI product engineer"}],
+            },
+            {
+                "key": "disabled",
+                "name": "Disabled",
+                "enabled": False,
+                "searches": [{"text": "unused"}],
+            },
+        ],
+    )
+
+    active = candidate.active_searches()
+    assert len(active) == 1
+    assert active[0][0] is not None
+    assert active[0][0].resume_id == 3
+    assert active[0][1].text == "AI product engineer"
+
+    with pytest.raises(ValidationError, match="keys must be unique"):
+        CandidateProfile(
+            search_profiles=[
+                {"key": "same", "name": "First", "searches": [{"text": "one"}]},
+                {"key": "same", "name": "Second", "searches": [{"text": "two"}]},
+            ]
+        )

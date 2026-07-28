@@ -151,5 +151,45 @@ docker compose run --rm worker job-copilot run --pages 1
 Текст всё равно передаётся настроенной LLM для анализа. Используйте локальную Ollama, если не
 хотите отправлять персональные данные облачному провайдеру.
 
+## 9. Настроить несколько профилей поиска
+
+После создания резюме добавьте в профиль массив `search_profiles`. Это можно сделать в
+`config/profile.json` или через `PATCH /profile`:
+
+```json
+{
+  "search_profiles": [
+    {
+      "key": "ai-product",
+      "name": "AI Product / Engineering",
+      "enabled": true,
+      "resume_id": 1,
+      "searches": [
+        {"text": "AI engineer LLM", "area": null, "period": 3},
+        {"text": "RAG engineer Python", "area": null, "period": 3}
+      ]
+    },
+    {
+      "key": "prompt-engineering",
+      "name": "Prompt Engineering",
+      "enabled": true,
+      "resume_id": 2,
+      "searches": [
+        {"text": "prompt engineer", "area": null, "period": 3}
+      ]
+    }
+  ]
+}
+```
+
+`key` должен быть уникальным и состоять из строчных латинских букв, цифр, `_` или `-`.
+`resume_id` берётся из ответа `POST /resumes`; его можно оставить `null`. Чтобы временно
+остановить направление без удаления настроек, задайте `enabled: false`. Если массив
+`search_profiles` непустой, старое поле `searches` не используется.
+
+Метод `GET /vacancies` возвращает для каждой вакансии массив `search_profiles`: так видно все
+направления, в которых она встретилась, и рекомендуемые ID резюме. При совпадении между
+несколькими запросами уведомление в Telegram отправляется только один раз.
+
 Если Telegram не получает сообщение, сначала проверьте, что найденная вакансия новая, прошла
 жёсткие фильтры и набрала не меньше `MIN_NOTIFICATION_SCORE`.

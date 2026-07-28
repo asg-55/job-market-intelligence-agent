@@ -25,6 +25,15 @@ class FailingLLMEvaluator:
         raise httpx.ConnectError("LLM unavailable")
 
 
+class CapturingNotifier:
+    def __init__(self) -> None:
+        self.search_profiles = []
+
+    async def send_vacancy(self, vacancy_item, result, search_profile=None):
+        del vacancy_item, result
+        self.search_profiles.append(search_profile)
+
+
 def test_llm_failure_falls_back_to_baseline_and_monitoring_continues(tmp_path) -> None:
     async def scenario() -> None:
         repository = Repository(tmp_path / "fallback.db")
@@ -84,5 +93,46 @@ def test_profile_change_reevaluates_known_vacancy(tmp_path) -> None:
         assert summary.reevaluated == 1
         assert summary.known == 0
         assert llm.calls == 1
+
+    asyncio.run(scenario())
+
+
+def test_multiple_search_profiles_are_audited_without_duplicate_notification(tmp_path) -> None:
+    async def scenario() -> None:
+        repository = Repository(tmp_path / "search-profiles.db")
+        notifier = CapturingNotifier()
+        candidate = profile(
+            searches=[],
+            search_profiles=[
+                {
+                    "key": "ai-product",
+                    "name": "AI Product",
+                    "resume_id": 1,
+                    "searches": [{"text": "AI product engineer"}],
+                },
+                {
+                    "key": "prompt-engineering",
+                    "name": "Prompt Engineering",
+                    "resume_id": 2,
+                    "searches": [{"text": "prompt engineer"}],
+                },
+            ],
+        )
+        pipeline = MonitoringPipeline(
+            FakeHHClient(), repository, ExplainableScorer(), notifier=notifier
+        )
+
+        summary = await pipeline.run(candidate)
+        saved = repository.list_vacancies()[0]
+
+        assert summary.found == 1
+        assert summary.new == 1
+        assert summary.notified == 1
+        assert [item["key"] for item in saved["search_profiles"]] == [
+            "ai-product",
+            "prompt-engineering",
+        ]
+        assert [item["resume_id"] for item in saved["search_profiles"]] == [1, 2]
+        assert notifier.search_profiles[0].key == "ai-product"
 
     asyncio.run(scenario())

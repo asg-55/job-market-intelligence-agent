@@ -57,6 +57,12 @@ class Repository:
                     FOREIGN KEY(vacancy_id) REFERENCES vacancies(id),
                     UNIQUE(vacancy_id, profile_version, search_profile_key)
                 );
+                CREATE TABLE IF NOT EXISTS telegram_sessions (
+                    chat_id TEXT PRIMARY KEY,
+                    state TEXT NOT NULL,
+                    data_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
                 CREATE TABLE IF NOT EXISTS feedback (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     vacancy_id TEXT NOT NULL,
@@ -205,6 +211,35 @@ class Repository:
                     resume_id,
                 ),
             )
+
+    def get_telegram_session(self, chat_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT state, data_json FROM telegram_sessions WHERE chat_id = ?", (chat_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return {"state": row["state"], "data": json.loads(row["data_json"])}
+
+    def save_telegram_session(
+        self, chat_id: str, state: str, data: dict[str, Any] | None = None
+    ) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO telegram_sessions(chat_id, state, data_json)
+                VALUES (?, ?, ?)
+                ON CONFLICT(chat_id) DO UPDATE SET
+                    state = excluded.state,
+                    data_json = excluded.data_json,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (chat_id, state, json.dumps(data or {}, ensure_ascii=False)),
+            )
+
+    def clear_telegram_session(self, chat_id: str) -> None:
+        with self.connect() as connection:
+            connection.execute("DELETE FROM telegram_sessions WHERE chat_id = ?", (chat_id,))
 
     def save_cover_letter(
         self,

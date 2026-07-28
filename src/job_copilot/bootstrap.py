@@ -12,6 +12,7 @@ from .profile_store import ProfileStore
 from .resume_advisor import OpenAICompatibleResumeAdvisor
 from .scoring import ExplainableScorer
 from .telegram import TelegramNotifier
+from .telegram_bot import TelegramBotController
 
 
 @dataclass
@@ -21,6 +22,7 @@ class AppContainer:
     repository: Repository
     hh: HHClient
     notifier: TelegramNotifier | None
+    telegram_bot: TelegramBotController | None
     llm_evaluator: OpenAICompatibleEvaluator | None
     cover_letter_generator: OpenAICompatibleCoverLetterGenerator | None
     resume_advisor: OpenAICompatibleResumeAdvisor | None
@@ -43,11 +45,18 @@ def build_container(settings: Settings) -> AppContainer:
     repository = Repository(settings.database_path)
     hh = HHClient(settings.hh_base_url, settings.hh_user_agent, settings.hh_access_token)
     notifier = None
+    telegram_bot = None
     if settings.telegram_bot_token and settings.telegram_chat_id:
         notifier = TelegramNotifier(
             settings.telegram_bot_token,
             settings.telegram_chat_id,
             feedback_enabled=bool(settings.telegram_webhook_secret),
+        )
+        telegram_bot = TelegramBotController(
+            repository,
+            profile_store,
+            notifier,
+            public_app_url=settings.public_app_url,
         )
     llm_evaluator = None
     cover_letter_generator = None
@@ -86,6 +95,7 @@ def build_container(settings: Settings) -> AppContainer:
         repository=repository,
         hh=hh,
         notifier=notifier,
+        telegram_bot=telegram_bot,
         llm_evaluator=llm_evaluator,
         cover_letter_generator=cover_letter_generator,
         resume_advisor=resume_advisor,

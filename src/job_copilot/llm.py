@@ -137,6 +137,7 @@ class OpenAICompatibleEvaluator:
                 "skills": profile.skills,
                 "verified_facts": profile.verified_facts,
                 "prohibited_claims": profile.prohibited_claims,
+                "preferences": profile.preferences,
             },
             "deterministic_baseline": baseline.to_dict(),
         }

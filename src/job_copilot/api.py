@@ -124,6 +124,17 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/capabilities")
+def capabilities(request: Request) -> dict[str, bool]:
+    current = container(request)
+    return {
+        "llm": bool(current.settings.llm_model),
+        "cover_letters": current.cover_letter_generator is not None,
+        "resume_advice": current.resume_advisor is not None,
+        "telegram": current.notifier is not None,
+    }
+
+
 @app.get("/app", include_in_schema=False)
 def user_app() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html")

@@ -90,6 +90,10 @@ class Repository:
                     content_sha256 TEXT NOT NULL,
                     version INTEGER NOT NULL DEFAULT 1,
                     archived INTEGER NOT NULL DEFAULT 0,
+                    source_resume_id INTEGER,
+                    source_resume_version INTEGER,
+                    vacancy_id TEXT,
+                    advice_id INTEGER,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
@@ -111,6 +115,10 @@ class Repository:
             )
             self._ensure_column(connection, "resume_advice", "resume_id", "INTEGER")
             self._ensure_column(connection, "resume_advice", "resume_version", "INTEGER")
+            self._ensure_column(connection, "resumes", "source_resume_id", "INTEGER")
+            self._ensure_column(connection, "resumes", "source_resume_version", "INTEGER")
+            self._ensure_column(connection, "resumes", "vacancy_id", "TEXT")
+            self._ensure_column(connection, "resumes", "advice_id", "INTEGER")
 
     @staticmethod
     def _ensure_column(
@@ -279,21 +287,35 @@ class Repository:
         return result
 
     def create_resume(
-        self, name: str, target_roles: list[str], content: str
+        self,
+        name: str,
+        target_roles: list[str],
+        content: str,
+        *,
+        source_resume_id: int | None = None,
+        source_resume_version: int | None = None,
+        vacancy_id: str | None = None,
+        advice_id: int | None = None,
     ) -> dict[str, Any]:
         content_hash = self._content_hash(content)
         try:
             with self.connect() as connection:
                 cursor = connection.execute(
                     """
-                    INSERT INTO resumes(name, target_roles_json, content, content_sha256)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO resumes(
+                        name, target_roles_json, content, content_sha256,
+                        source_resume_id, source_resume_version, vacancy_id, advice_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         name,
                         json.dumps(target_roles, ensure_ascii=False),
                         content,
                         content_hash,
+                        source_resume_id,
+                        source_resume_version,
+                        vacancy_id,
+                        advice_id,
                     ),
                 )
                 resume_id = int(cursor.lastrowid)
@@ -310,6 +332,7 @@ class Repository:
             rows = connection.execute(
                 f"""
                 SELECT id, name, target_roles_json, content_sha256, version, archived,
+                       source_resume_id, source_resume_version, vacancy_id, advice_id,
                        created_at, updated_at
                 FROM resumes {where}
                 ORDER BY archived, updated_at DESC, id DESC

@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .bootstrap import AppContainer, build_container
 from .config import CandidateProfile, get_settings
+from .resume_export import build_resume_docx
 
 
 @asynccontextmanager
@@ -87,6 +88,10 @@ class ResumeSummaryResponse(BaseModel):
     content_sha256: str
     version: int
     archived: bool
+    source_resume_id: int | None = None
+    source_resume_version: int | None = None
+    vacancy_id: str | None = None
+    advice_id: int | None = None
     created_at: str
     updated_at: str
 
@@ -117,6 +122,12 @@ class ResumeAdviceResponse(BaseModel):
     status: Literal["draft"] = "draft"
     result: dict[str, Any]
     metadata: dict[str, Any]
+
+
+class AdaptedResumeRequest(BaseModel):
+    resume_id: int = Field(ge=1)
+    advice_id: int = Field(ge=1)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
 
 
 @app.get("/health")
@@ -223,6 +234,19 @@ def update_resume(
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
     return ResumeResponse.model_validate(resume)
+
+
+@app.get("/resumes/{resume_id}/export.docx", response_class=StreamingResponse)
+def export_resume(resume_id: int, request: Request) -> StreamingResponse:
+    resume = container(request).repository.get_resume(resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    filename = f"resume-{resume_id}-v{resume['version']}.docx"
+    return StreamingResponse(
+        iter([build_resume_docx(resume)]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.post("/monitor/run")
@@ -361,6 +385,48 @@ def get_resume_advice(advice_id: int, request: Request) -> ResumeAdviceResponse:
     if advice is None:
         raise HTTPException(status_code=404, detail="Resume advice not found")
     return ResumeAdviceResponse.model_validate(advice)
+
+
+@app.post(
+    "/vacancies/{vacancy_id}/adapted-resume",
+    response_model=ResumeResponse,
+    status_code=201,
+)
+def create_adapted_resume(
+    vacancy_id: str, payload: AdaptedResumeRequest, request: Request
+) -> ResumeResponse:
+    current = container(request)
+    vacancy = current.repository.get_vacancy(vacancy_id)
+    source = current.repository.get_resume(payload.resume_id)
+    advice = current.repository.get_resume_advice(payload.advice_id)
+    if vacancy is None:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+    if source is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    if advice is None:
+        raise HTTPException(status_code=404, detail="Resume advice not found")
+    if advice["vacancy_id"] != vacancy_id or advice["resume_id"] != payload.resume_id:
+        raise HTTPException(status_code=409, detail="Advice does not match vacancy and resume")
+    if (
+        advice["resume_version"] != source["version"]
+        or advice["resume_sha256"] != source["content_sha256"]
+    ):
+        raise HTTPException(status_code=409, detail="Source resume changed after advice")
+
+    name = (payload.name or f"{source['name']} — {vacancy.name}")[:120].rstrip()
+    try:
+        copied = current.repository.create_resume(
+            name,
+            [vacancy.name],
+            source["content"],
+            source_resume_id=source["id"],
+            source_resume_version=source["version"],
+            vacancy_id=vacancy_id,
+            advice_id=payload.advice_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return ResumeResponse.model_validate(copied)
 
 
 @app.post("/telegram/webhook", include_in_schema=False)

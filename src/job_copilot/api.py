@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from hashlib import sha256
+from hmac import compare_digest
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -35,6 +36,19 @@ app.mount("/app-assets", StaticFiles(directory=WEB_DIR), name="app-assets")
 
 def container(request: Request) -> AppContainer:
     return request.app.state.container
+
+
+def require_automation_token(
+    request: Request,
+    x_automation_token: Annotated[str | None, Header()] = None,
+) -> AppContainer:
+    current = container(request)
+    expected = current.settings.automation_api_token
+    if not expected:
+        raise HTTPException(status_code=503, detail="Configure AUTOMATION_API_TOKEN first")
+    if not x_automation_token or not compare_digest(x_automation_token, expected):
+        raise HTTPException(status_code=401, detail="Invalid automation token")
+    return current
 
 
 class FeedbackRequest(BaseModel):
@@ -252,6 +266,30 @@ def export_resume(resume_id: int, request: Request) -> StreamingResponse:
 @app.post("/monitor/run")
 async def run_monitor(request: Request, pages: int = Query(default=1, ge=1, le=10)):
     current = container(request)
+    return await current.pipeline.run(current.profile_store.load(), pages=pages)
+
+
+@app.get("/automation/status")
+def automation_status(
+    request: Request,
+    x_automation_token: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    current = require_automation_token(request, x_automation_token)
+    return {
+        "status": "ready",
+        "llm": bool(current.settings.llm_model),
+        "telegram": current.notifier is not None,
+        "profile_version": current.profile_store.load().fingerprint(),
+    }
+
+
+@app.post("/automation/monitor/run")
+async def automation_run_monitor(
+    request: Request,
+    pages: int = Query(default=1, ge=1, le=10),
+    x_automation_token: Annotated[str | None, Header()] = None,
+):
+    current = require_automation_token(request, x_automation_token)
     return await current.pipeline.run(current.profile_store.load(), pages=pages)
 
 

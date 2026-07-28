@@ -9,6 +9,7 @@ config/private/
 data/*
 !data/.gitkeep
 outputs/
+logs/
 /research/
 dist/
 build/

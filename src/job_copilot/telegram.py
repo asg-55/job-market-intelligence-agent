@@ -4,6 +4,7 @@ import html
 
 import httpx
 
+from .config import SearchProfile
 from .domain import ScoreResult, Vacancy
 
 
@@ -27,13 +28,28 @@ class TelegramNotifier:
         if self._owns_client:
             await self._client.aclose()
 
-    async def send_vacancy(self, vacancy: Vacancy, result: ScoreResult) -> None:
+    async def send_vacancy(
+        self,
+        vacancy: Vacancy,
+        result: ScoreResult,
+        search_profile: SearchProfile | None = None,
+    ) -> None:
         strengths = ", ".join(result.matched_skills[:5]) or "нет явных совпадений"
         gaps = ", ".join(result.missing_skills[:3]) or "критичных не найдено"
+        search_context = ""
+        if search_profile is not None:
+            resume_hint = (
+                f" · резюме #{search_profile.resume_id}" if search_profile.resume_id else ""
+            )
+            search_context = (
+                f"Профиль поиска: <b>{html.escape(search_profile.name)}</b>"
+                f"{resume_hint}\n"
+            )
         message = (
             f"🔥 <b>Совпадение: {result.total_score}%</b>\n\n"
             f"<b>{html.escape(vacancy.name)}</b>\n"
             f"Компания: {html.escape(vacancy.employer)}\n"
+            f"{search_context}"
             f"Формат: {html.escape(vacancy.schedule_name or 'не указан')}\n"
             f"Опыт: {html.escape(vacancy.experience_name or 'не указан')}\n\n"
             f"<b>Совпало:</b> {html.escape(strengths)}\n"

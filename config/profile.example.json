@@ -23,9 +23,35 @@
   "prohibited_claims": [
     "Do not invent commercial experience, metrics, employers, or technologies"
   ],
-  "searches": [
-    {"text": "AI engineer LLM", "area": null, "period": 3},
-    {"text": "RAG engineer Python", "area": null, "period": 3},
-    {"text": "prompt engineer", "area": null, "period": 3}
+  "searches": [],
+  "search_profiles": [
+    {
+      "key": "ai-product",
+      "name": "AI Product / Engineering",
+      "enabled": true,
+      "resume_id": null,
+      "searches": [
+        {"text": "AI engineer LLM", "area": null, "period": 3},
+        {"text": "RAG engineer Python", "area": null, "period": 3}
+      ]
+    },
+    {
+      "key": "prompt-engineering",
+      "name": "Prompt Engineering",
+      "enabled": true,
+      "resume_id": null,
+      "searches": [
+        {"text": "prompt engineer", "area": null, "period": 3}
+      ]
+    },
+    {
+      "key": "ai-operations",
+      "name": "AI Operations",
+      "enabled": true,
+      "resume_id": null,
+      "searches": [
+        {"text": "AI operations automation", "area": null, "period": 3}
+      ]
+    }
   ]
 }

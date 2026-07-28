@@ -5,7 +5,7 @@ from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,16 @@ class SearchQuery(BaseModel):
     text: str
     area: str | None = None
     period: int = Field(default=3, ge=1, le=30)
+
+
+class SearchProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,49}$")
+    name: str = Field(min_length=1, max_length=120)
+    enabled: bool = True
+    resume_id: int | None = Field(default=None, ge=1)
+    searches: list[SearchQuery] = Field(min_length=1, max_length=20)
 
 
 class CandidateProfile(BaseModel):
@@ -34,6 +44,24 @@ class CandidateProfile(BaseModel):
     verified_facts: list[str] = Field(default_factory=list)
     prohibited_claims: list[str] = Field(default_factory=list)
     searches: list[SearchQuery] = Field(default_factory=list)
+    search_profiles: list[SearchProfile] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def unique_search_profile_keys(self) -> CandidateProfile:
+        keys = [item.key for item in self.search_profiles]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Search profile keys must be unique")
+        return self
+
+    def active_searches(self) -> list[tuple[SearchProfile | None, SearchQuery]]:
+        if self.search_profiles:
+            return [
+                (search_profile, search)
+                for search_profile in self.search_profiles
+                if search_profile.enabled
+                for search in search_profile.searches
+            ]
+        return [(None, search) for search in self.searches]
 
     @classmethod
     def from_file(cls, path: str | Path) -> CandidateProfile:

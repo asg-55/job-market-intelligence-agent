@@ -4,11 +4,14 @@ import json
 import httpx
 from test_scoring import profile, vacancy
 
+from job_copilot.config import SearchProfile
 from job_copilot.scoring import ExplainableScorer
 from job_copilot.telegram import TelegramNotifier
 
 
-def _send_and_capture(feedback_enabled: bool) -> dict:
+def _send_and_capture(
+    feedback_enabled: bool, search_profile: SearchProfile | None = None
+) -> dict:
     captured: dict = {}
 
     async def scenario() -> None:
@@ -25,7 +28,7 @@ def _send_and_capture(feedback_enabled: bool) -> dict:
         )
         item = vacancy()
         result = ExplainableScorer().score(item, profile())
-        await notifier.send_vacancy(item, result)
+        await notifier.send_vacancy(item, result, search_profile)
         await client.aclose()
 
     asyncio.run(scenario())
@@ -44,3 +47,17 @@ def test_feedback_buttons_are_enabled_with_webhook() -> None:
     rows = payload["reply_markup"]["inline_keyboard"]
     assert len(rows) == 2
     assert rows[1][0]["callback_data"] == "fit:42"
+
+
+def test_search_profile_and_resume_are_shown_in_message() -> None:
+    payload = _send_and_capture(
+        feedback_enabled=False,
+        search_profile=SearchProfile(
+            key="ai-product",
+            name="AI Product",
+            resume_id=7,
+            searches=[{"text": "AI product engineer"}],
+        ),
+    )
+
+    assert "Профиль поиска: <b>AI Product</b> · резюме #7" in payload["text"]

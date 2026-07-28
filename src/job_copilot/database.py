@@ -46,6 +46,17 @@ class Repository:
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(vacancy_id) REFERENCES vacancies(id)
                 );
+                CREATE TABLE IF NOT EXISTS vacancy_search_matches (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    vacancy_id TEXT NOT NULL,
+                    profile_version TEXT NOT NULL,
+                    search_profile_key TEXT NOT NULL,
+                    search_profile_name TEXT NOT NULL,
+                    resume_id INTEGER,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(vacancy_id) REFERENCES vacancies(id),
+                    UNIQUE(vacancy_id, profile_version, search_profile_key)
+                );
                 CREATE TABLE IF NOT EXISTS feedback (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     vacancy_id TEXT NOT NULL,
@@ -168,6 +179,31 @@ class Repository:
             connection.execute(
                 "INSERT INTO feedback(vacancy_id, action, note) VALUES (?, ?, ?)",
                 (vacancy_id, action, note),
+            )
+
+    def add_search_match(
+        self,
+        vacancy_id: str,
+        profile_version: str,
+        search_profile_key: str,
+        search_profile_name: str,
+        resume_id: int | None,
+    ) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO vacancy_search_matches(
+                    vacancy_id, profile_version, search_profile_key,
+                    search_profile_name, resume_id
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    vacancy_id,
+                    profile_version,
+                    search_profile_key,
+                    search_profile_name,
+                    resume_id,
+                ),
             )
 
     def save_cover_letter(
@@ -357,7 +393,7 @@ class Repository:
             rows = connection.execute(
                 """
                 SELECT v.id, v.name, v.employer, v.url, v.published_at,
-                       e.score, e.result_json, e.created_at
+                       e.profile_version, e.score, e.result_json, e.created_at
                 FROM vacancies v
                 JOIN evaluations e ON e.id = (
                     SELECT MAX(id) FROM evaluations WHERE vacancy_id = v.id
@@ -370,5 +406,15 @@ class Repository:
         for row in rows:
             item = dict(row)
             item["result"] = json.loads(item.pop("result_json"))
+            matches = connection.execute(
+                """
+                SELECT search_profile_key AS key, search_profile_name AS name, resume_id
+                FROM vacancy_search_matches
+                WHERE vacancy_id = ? AND profile_version = ?
+                ORDER BY id
+                """,
+                (item["id"], item["profile_version"]),
+            ).fetchall()
+            item["search_profiles"] = [dict(match) for match in matches]
             result.append(item)
         return result

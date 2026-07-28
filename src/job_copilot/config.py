@@ -43,6 +43,7 @@ class CandidateProfile(BaseModel):
     salary_currency: str = "RUR"
     verified_facts: list[str] = Field(default_factory=list)
     prohibited_claims: list[str] = Field(default_factory=list)
+    preferences: str = Field(default="", max_length=5000)
     searches: list[SearchQuery] = Field(default_factory=list)
     search_profiles: list[SearchProfile] = Field(default_factory=list, max_length=20)
 
@@ -84,6 +85,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     telegram_webhook_secret: str | None = None
+    public_app_url: str | None = None
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: str = "ollama"
     llm_model: str | None = None

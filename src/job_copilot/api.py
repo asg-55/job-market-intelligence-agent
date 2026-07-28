@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from hashlib import sha256
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 
 from .bootstrap import AppContainer, build_container
@@ -25,6 +28,8 @@ app = FastAPI(
     description="Explainable vacancy monitoring and matching service",
     lifespan=lifespan,
 )
+WEB_DIR = Path(__file__).with_name("web")
+app.mount("/app-assets", StaticFiles(directory=WEB_DIR), name="app-assets")
 
 
 def container(request: Request) -> AppContainer:
@@ -117,6 +122,11 @@ class ResumeAdviceResponse(BaseModel):
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/app", include_in_schema=False)
+def user_app() -> FileResponse:
+    return FileResponse(WEB_DIR / "index.html")
 
 
 @app.get("/vacancies")
@@ -352,6 +362,15 @@ async def telegram_webhook(
     if not expected_secret or x_telegram_bot_api_secret_token != expected_secret:
         raise HTTPException(status_code=403, detail="Invalid webhook secret")
     payload = await request.json()
+    message = payload.get("message")
+    if message:
+        chat_id = str(message.get("chat", {}).get("id", ""))
+        if chat_id != str(current.settings.telegram_chat_id):
+            return {"ok": True}
+        telegram_bot = getattr(current, "telegram_bot", None)
+        if telegram_bot is not None:
+            await telegram_bot.handle_message(message)
+        return {"ok": True}
     callback = payload.get("callback_query")
     if not callback or not current.notifier:
         return {"ok": True}

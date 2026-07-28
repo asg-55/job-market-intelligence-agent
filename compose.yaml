@@ -28,6 +28,21 @@ services:
     healthcheck:
       disable: true
 
+  bot:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - path: .env
+        required: false
+    command: ["job-copilot", "telegram-bot"]
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+
   tests:
     build:
       context: .

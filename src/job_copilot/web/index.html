@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10231f" />
+    <title>Job Copilot — кабинет</title>
+    <link rel="stylesheet" href="/app-assets/app.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#overview" aria-label="Job Copilot">
+          <span class="brand-mark">J</span>
+          <span><b>Job Copilot</b><small>Поиск с ясной головой</small></span>
+        </a>
+        <nav aria-label="Разделы">
+          <button class="nav-item active" data-view="overview"><span>⌂</span>Обзор</button>
+          <button class="nav-item" data-view="profile"><span>◎</span>Мой профиль</button>
+          <button class="nav-item" data-view="resumes"><span>▤</span>Резюме</button>
+          <button class="nav-item" data-view="searches"><span>⌕</span>Направления</button>
+          <button class="nav-item" data-view="vacancies"><span>✦</span>Вакансии</button>
+        </nav>
+        <div class="privacy-note"><span>●</span> Данные хранятся локально</div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div><p class="eyebrow">Личный кабинет</p><h1 id="page-title">Добрый день</h1></div>
+          <div class="status"><i></i><span>Система готова</span></div>
+        </header>
+
+        <section class="view active" id="view-overview">
+          <div class="hero">
+            <div><span class="pill">AI JOB SEARCH COPILOT</span><h2>Ваша карьера —<br /><em>не поток вкладок.</em></h2><p>Соберите профиль, резюме и направления поиска в одном спокойном рабочем пространстве.</p><button class="primary" data-go="profile">Заполнить профиль <span>→</span></button></div>
+            <div class="orbit" aria-hidden="true"><div class="orbit-ring"><span>AI</span></div><small>анализирует<br />и объясняет</small></div>
+          </div>
+          <div class="metric-grid">
+            <article><span>Резюме</span><strong id="metric-resumes">—</strong><small>активных версий</small></article>
+            <article><span>Направления</span><strong id="metric-searches">—</strong><small>профилей поиска</small></article>
+            <article><span>Вакансии</span><strong id="metric-vacancies">—</strong><small>в базе наблюдения</small></article>
+            <article class="accent"><span>Следующий шаг</span><strong>Проверьте факты</strong><small>AI использует только подтверждённое</small></article>
+          </div>
+          <div class="section-heading"><div><p class="eyebrow">Рабочий процесс</p><h3>Три шага до точного поиска</h3></div></div>
+          <div class="steps"><article><b>01</b><h4>Расскажите о себе</h4><p>Роли, навыки, пожелания и только проверяемые факты.</p></article><article><b>02</b><h4>Добавьте версии</h4><p>Отдельные резюме под Product, Engineering и Operations.</p></article><article><b>03</b><h4>Включите поиск</h4><p>Copilot найдёт, сравнит и пришлёт лучшие варианты в Telegram.</p></article></div>
+        </section>
+
+        <section class="view" id="view-profile">
+          <div class="section-heading"><div><p class="eyebrow">Основа рекомендаций</p><h2>Мой профиль</h2><p>Эти данные можно менять в любой момент.</p></div><button class="primary" type="submit" form="profile-form">Сохранить</button></div>
+          <form class="panel form-grid" id="profile-form">
+            <label><span>Имя</span><input id="profile-name" required maxlength="120" /></label>
+            <label><span>Целевые роли</span><input id="profile-roles" placeholder="AI Engineer, Prompt Engineer" /></label>
+            <label class="wide"><span>Навыки</span><textarea id="profile-skills" rows="3" placeholder="Python, RAG, Docker"></textarea><small>Перечислите через запятую</small></label>
+            <label><span>Минимальная зарплата</span><input id="profile-salary" type="number" min="0" placeholder="Не указана" /></label>
+            <label class="toggle"><input id="profile-remote" type="checkbox" /><span>Только удалённая работа</span></label>
+            <label class="wide"><span>Пожелания к работе</span><textarea id="profile-preferences" rows="5" placeholder="Какие задачи интересны, желаемый формат, ограничения..."></textarea></label>
+            <label class="wide"><span>Подтверждённые факты</span><textarea id="profile-facts" rows="5" placeholder="Один реальный факт на строку"></textarea><small>Только то, что можно честно использовать в письмах и резюме</small></label>
+          </form>
+        </section>
+
+        <section class="view" id="view-resumes">
+          <div class="section-heading"><div><p class="eyebrow">Библиотека документов</p><h2>Мои резюме</h2><p>Храните отдельную основу для каждого карьерного направления.</p></div><button class="primary" id="add-resume">+ Добавить резюме</button></div>
+          <div class="card-grid" id="resume-list"></div>
+        </section>
+
+        <section class="view" id="view-searches">
+          <div class="section-heading"><div><p class="eyebrow">Стратегия мониторинга</p><h2>Направления поиска</h2><p>Каждому направлению — свои запросы и предпочтительное резюме.</p></div><div class="button-row"><button class="secondary" id="add-search">+ Направление</button><button class="primary" id="save-searches">Сохранить</button></div></div>
+          <div id="search-list" class="stack"></div>
+        </section>
+
+        <section class="view" id="view-vacancies">
+          <div class="section-heading"><div><p class="eyebrow">Результаты мониторинга</p><h2>Подходящие вакансии</h2><p>Сначала самые сильные совпадения.</p></div><button class="secondary" id="refresh-vacancies">Обновить</button></div>
+          <div id="vacancy-list" class="stack"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="resume-dialog">
+      <form method="dialog" id="resume-form">
+        <div class="dialog-head"><div><p class="eyebrow">Документ</p><h3 id="resume-dialog-title">Новое резюме</h3></div><button class="icon-button" value="cancel" aria-label="Закрыть">×</button></div>
+        <input id="resume-id" type="hidden" />
+        <label><span>Название</span><input id="resume-name" required maxlength="120" placeholder="AI Product Engineer" /></label>
+        <label><span>Целевые роли</span><input id="resume-roles" placeholder="AI Engineer, LLM Engineer" /></label>
+        <label><span>Текст резюме</span><textarea id="resume-content" required minlength="50" maxlength="30000" rows="14"></textarea></label>
+        <div class="dialog-actions"><button class="secondary" value="cancel">Отмена</button><button class="primary" id="save-resume" value="default">Сохранить</button></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/app-assets/app.js" defer></script>
+  </body>
+</html>

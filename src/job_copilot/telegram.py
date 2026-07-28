@@ -19,8 +19,9 @@ class TelegramNotifier:
     ) -> None:
         self.chat_id = chat_id
         self.feedback_enabled = feedback_enabled
+        self._token = token
         self._client = client or httpx.AsyncClient(
-            base_url=f"https://api.telegram.org/bot{token}", timeout=20
+            base_url=f"https://api.telegram.org/bot{token}/", timeout=20
         )
         self._owns_client = client is None
 
@@ -64,7 +65,7 @@ class TelegramNotifier:
                 ]
             )
         response = await self._client.post(
-            "/sendMessage",
+            "sendMessage",
             json={
                 "chat_id": self.chat_id,
                 "text": message,
@@ -75,9 +76,39 @@ class TelegramNotifier:
         )
         response.raise_for_status()
 
+    async def send_text(self, text: str, reply_markup: dict | None = None) -> None:
+        payload = {
+            "chat_id": self.chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        response = await self._client.post("sendMessage", json=payload)
+        response.raise_for_status()
+
+    async def download_file(self, file_id: str) -> bytes:
+        response = await self._client.post("getFile", json={"file_id": file_id})
+        response.raise_for_status()
+        file_path = response.json()["result"]["file_path"]
+        download = await self._client.get(
+            f"https://api.telegram.org/file/bot{self._token}/{file_path}"
+        )
+        download.raise_for_status()
+        return download.content
+
+    async def get_updates(self, offset: int | None = None) -> list[dict]:
+        params: dict[str, int] = {"timeout": 25}
+        if offset is not None:
+            params["offset"] = offset
+        response = await self._client.get("getUpdates", params=params, timeout=35)
+        response.raise_for_status()
+        return response.json().get("result", [])
+
     async def answer_callback(self, callback_query_id: str, text: str) -> None:
         response = await self._client.post(
-            "/answerCallbackQuery",
+            "answerCallbackQuery",
             json={"callback_query_id": callback_query_id, "text": text},
         )
         response.raise_for_status()

@@ -22,6 +22,7 @@ def test_repository_keeps_multiple_versioned_resumes(tmp_path) -> None:
     )
 
     assert first["id"] != second["id"]
+    assert first["source_resume_id"] is None
     assert len(repository.list_resumes()) == 2
     assert "content" not in repository.list_resumes()[0]
 

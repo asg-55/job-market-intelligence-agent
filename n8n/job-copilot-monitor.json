@@ -28,7 +28,6 @@
         "url": "http://127.0.0.1:8000/automation/monitor/run?pages=1",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
         "options": {
           "timeout": 600000
         }

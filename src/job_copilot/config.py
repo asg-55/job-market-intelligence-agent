@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     telegram_chat_id: str | None = None
     telegram_webhook_secret: str | None = None
     public_app_url: str | None = None
+    automation_api_token: str | None = None
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: str = "ollama"
     llm_model: str | None = None

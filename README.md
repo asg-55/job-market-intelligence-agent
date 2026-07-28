@@ -21,9 +21,17 @@
 Продуктовые границы и метрики описаны в [docs/PRODUCT.md](docs/PRODUCT.md).
 Подробная инструкция для первого запуска находится в [docs/SETUP_RU.md](docs/SETUP_RU.md).
 
-## Быстрый старт (Docker-first)
+## Быстрый старт
 
-Основной способ работы требует только Docker Desktop.
+Для постоянной работы на Windows рекомендуется гибридный нативный режим: Python-ядро и n8n
+работают как локальные процессы, а AI использует уже установленную Ollama. Пошаговая инструкция:
+[docs/NATIVE_N8N_RU.md](docs/NATIVE_N8N_RU.md).
+
+Docker остаётся воспроизводимым резервным способом запуска и средой проверок для GitHub.
+
+### Резервный запуск в Docker
+
+Для резервного способа работы требуется Docker Desktop.
 
 ```powershell
 Copy-Item config/profile.example.json config/profile.json
@@ -106,8 +114,9 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d '{"url":"https://example.com/telegram/webhook","secret_token":"<SECRET>"}'
 ```
 
-Интервал задаётся аргументом `--interval` команды worker. Оркестрация отделена от
-бизнес-логики: позднее worker можно заменить n8n, вызывающим стабильный HTTP API.
+В нативном режиме расписанием управляет импортируемый n8n workflow, который вызывает
+защищённый HTTP API. В Docker-режиме интервал по-прежнему задаётся аргументом `--interval`
+команды worker. Бизнес-логика остаётся в Python и не дублируется в оркестраторе.
 
 ## Как считается оценка
 

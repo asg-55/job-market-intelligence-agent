@@ -1,0 +1,107 @@
+{
+  "id": "job-copilot-hh-monitor-v1",
+  "name": "Job Copilot — HH monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "21c0bfd0-39aa-43b2-a7ab-1c0895395970",
+      "name": "Every 12 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/automation/monitor/run?pages=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "432866c3-4816-4720-a36a-167476ce4684",
+      "name": "Run Job Copilot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Job Copilot Automation Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
+        "text": "=Job Copilot завершил мониторинг.\n\nНайдено: {{ $json.found }}\nНовых: {{ $json.new }}\nПрошли фильтры: {{ $json.passed }}\nОтправлено вакансий: {{ $json.notified }}\nОшибок: {{ $json.errors }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6d75fcf4-e616-4370-987d-5e488509701b",
+      "name": "Send run summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        520,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "name": "Job Copilot Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 12 hours": {
+      "main": [
+        [
+          {
+            "node": "Run Job Copilot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Job Copilot": {
+      "main": [
+        [
+          {
+            "node": "Send run summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b173ead4-f629-4462-8f4d-efb5f94e1150",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

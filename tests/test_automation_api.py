@@ -53,6 +53,7 @@ def test_automation_routes_require_shared_token() -> None:
         assert status.status_code == 200
         assert status.json()["llm"] is True
         assert status.json()["telegram"] is True
+        assert status.json()["hh_authenticated"] is False
         assert run.status_code == 200
         assert run.json()["notified"] == 1
         assert pipeline.pages == [2]

@@ -157,6 +157,7 @@ def capabilities(request: Request) -> dict[str, bool]:
         "cover_letters": current.cover_letter_generator is not None,
         "resume_advice": current.resume_advisor is not None,
         "telegram": current.notifier is not None,
+        "hh_authenticated": bool(current.settings.hh_access_token),
     }
 
 
@@ -279,6 +280,7 @@ def automation_status(
         "status": "ready",
         "llm": bool(current.settings.llm_model),
         "telegram": current.notifier is not None,
+        "hh_authenticated": bool(current.settings.hh_access_token),
         "profile_version": current.profile_store.load().fingerprint(),
     }
 

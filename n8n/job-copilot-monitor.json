@@ -49,7 +49,7 @@
     {
       "parameters": {
         "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
-        "text": "=Job Copilot завершил мониторинг.\n\nНайдено: {{ $json.found }}\nНовых: {{ $json.new }}\nПрошли фильтры: {{ $json.passed }}\nОтправлено вакансий: {{ $json.notified }}\nОшибок: {{ $json.errors }}",
+        "text": "=Job Copilot завершил мониторинг.\n\nНайдено: {{ $json.found }}\nНовых: {{ $json.new }}\nПрошли фильтры: {{ $json.passed }}\nОтправлено вакансий: {{ $json.notified }}\nОшибок: {{ $json.errors }}\n\n{{ $json.source_message || 'HH API: доступен' }}",
         "additionalFields": {
           "appendAttribution": false
         }

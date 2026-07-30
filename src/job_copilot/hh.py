@@ -12,6 +12,21 @@ from .domain import Vacancy
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
+class HHAPIError(httpx.HTTPStatusError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        category: str,
+        user_message: str,
+        request: httpx.Request,
+        response: httpx.Response,
+    ) -> None:
+        super().__init__(message, request=request, response=response)
+        self.category = category
+        self.user_message = user_message
+
+
 class HHClient:
     def __init__(
         self,
@@ -23,9 +38,8 @@ class HHClient:
         headers = {"HH-User-Agent": user_agent, "Accept": "application/json"}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
-        self._client = client or httpx.AsyncClient(
-            base_url=base_url.rstrip("/"), headers=headers, timeout=20
-        )
+        self._headers = headers
+        self._client = client or httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=20)
         self._owns_client = client is None
 
     async def close(self) -> None:
@@ -42,8 +56,7 @@ class HHClient:
             }
             if query.area:
                 params["area"] = query.area
-            response = await self._client.get("/vacancies", params=params)
-            response.raise_for_status()
+            response = await self._get("/vacancies", params=params)
             payload = response.json()
             for item in payload.get("items", []):
                 yield await self.get_vacancy(str(item["id"]))
@@ -51,9 +64,62 @@ class HHClient:
                 break
 
     async def get_vacancy(self, vacancy_id: str) -> Vacancy:
-        response = await self._client.get(f"/vacancies/{vacancy_id}")
-        response.raise_for_status()
+        response = await self._get(f"/vacancies/{vacancy_id}")
         return parse_vacancy(response.json())
+
+    async def _get(self, path: str, params: dict[str, Any] | None = None) -> httpx.Response:
+        response = await self._client.get(path, params=params, headers=self._headers)
+        if response.is_success:
+            return response
+        category, user_message = classify_hh_error(response)
+        raise HHAPIError(
+            f"HH API returned {response.status_code}",
+            category=category,
+            user_message=user_message,
+            request=response.request,
+            response=response,
+        )
+
+
+def classify_hh_error(response: httpx.Response) -> tuple[str, str]:
+    error_markers: set[str] = set()
+    try:
+        payload = response.json()
+        for error in payload.get("errors", []):
+            error_markers.add(str(error.get("type", "")).lower())
+            error_markers.add(str(error.get("value", "")).lower())
+    except (TypeError, ValueError):
+        pass
+
+    if response.status_code == 403 and any("captcha" in item for item in error_markers):
+        return (
+            "captcha",
+            "HH временно требует CAPTCHA. Откройте hh.ru, войдите в аккаунт и "
+            "пройдите проверку, затем повторите поиск.",
+        )
+    if response.status_code == 403 and (
+        "oauth" in error_markers
+        or any("authorization" in item or "token" in item for item in error_markers)
+    ):
+        return (
+            "authorization",
+            "Токен HH недействителен или истёк. Обновите HH_ACCESS_TOKEN в .env.",
+        )
+    if response.status_code == 403:
+        return (
+            "forbidden",
+            "HH отклонил запрос. Зарегистрируйте приложение на dev.hh.ru и настройте "
+            "HH_ACCESS_TOKEN.",
+        )
+    if response.status_code == 429:
+        return (
+            "rate_limit",
+            "HH ограничил частоту запросов. Не запускайте поиск вручную — следующая "
+            "попытка будет выполнена по расписанию.",
+        )
+    if response.status_code >= 500:
+        return "unavailable", "Сервис HH временно недоступен. Повторим попытку по расписанию."
+    return "http_error", f"HH вернул ошибку HTTP {response.status_code}."
 
 
 def parse_vacancy(data: dict[str, Any]) -> Vacancy:

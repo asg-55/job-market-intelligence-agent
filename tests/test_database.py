@@ -12,6 +12,7 @@ def test_repository_deduplicates_vacancy_and_keeps_evaluations(tmp_path) -> None
     rows = repository.list_vacancies()
     assert len(rows) == 1
     assert rows[0]["score"] == 80
+    assert rows[0]["source"] == "hh"
 
 
 def test_vacancy_list_returns_latest_feedback(tmp_path) -> None:

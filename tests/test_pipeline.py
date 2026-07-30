@@ -31,6 +31,14 @@ class FailingHHClient:
         )
 
 
+class FakeRemotiveClient:
+    source_name = "remotive"
+
+    async def search(self, query: SearchQuery, pages: int = 1):
+        del query, pages
+        yield vacancy(id="remotive:42", source="remotive")
+
+
 class FailingLLMEvaluator:
     def __init__(self) -> None:
         self.calls = 0
@@ -84,6 +92,28 @@ def test_hh_failure_is_reported_without_crashing_monitoring(tmp_path) -> None:
         assert summary.errors == 1
         assert summary.source_status == "captcha"
         assert summary.source_message == "HH requires CAPTCHA"
+
+    asyncio.run(scenario())
+
+
+def test_secondary_source_continues_when_hh_is_blocked(tmp_path) -> None:
+    async def scenario() -> None:
+        repository = Repository(tmp_path / "partial.db")
+        pipeline = MonitoringPipeline(
+            FailingHHClient(),
+            repository,
+            ExplainableScorer(),
+            additional_sources=[FakeRemotiveClient()],
+        )
+        candidate = profile(searches=[{"text": "LLM engineer"}])
+
+        summary = await pipeline.run(candidate)
+
+        assert summary.found == 1
+        assert summary.new == 1
+        assert summary.source_status == "partial"
+        assert summary.sources["hh"]["status"] == "captcha"
+        assert summary.sources["remotive"]["status"] == "ok"
 
     asyncio.run(scenario())
 

@@ -29,6 +29,7 @@ class Repository:
                 """
                 CREATE TABLE IF NOT EXISTS vacancies (
                     id TEXT PRIMARY KEY,
+                    source TEXT NOT NULL DEFAULT 'hh',
                     name TEXT NOT NULL,
                     employer TEXT NOT NULL,
                     url TEXT NOT NULL,
@@ -119,6 +120,7 @@ class Repository:
             self._ensure_column(connection, "resumes", "source_resume_version", "INTEGER")
             self._ensure_column(connection, "resumes", "vacancy_id", "TEXT")
             self._ensure_column(connection, "resumes", "advice_id", "INTEGER")
+            self._ensure_column(connection, "vacancies", "source", "TEXT NOT NULL DEFAULT 'hh'")
 
     @staticmethod
     def _ensure_column(
@@ -160,15 +162,17 @@ class Repository:
         with self.connect() as connection:
             connection.execute(
                 """
-                INSERT INTO vacancies(id, name, employer, url, published_at, payload_json)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO vacancies(id, source, name, employer, url, published_at, payload_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
-                    name=excluded.name, employer=excluded.employer, url=excluded.url,
+                    source=excluded.source, name=excluded.name, employer=excluded.employer,
+                    url=excluded.url,
                     published_at=excluded.published_at, payload_json=excluded.payload_json,
                     updated_at=CURRENT_TIMESTAMP
                 """,
                 (
                     vacancy.id,
+                    vacancy.source,
                     vacancy.name,
                     vacancy.employer,
                     vacancy.url,
@@ -450,7 +454,7 @@ class Repository:
         with self.connect() as connection:
             rows = connection.execute(
                 """
-                SELECT v.id, v.name, v.employer, v.url, v.published_at,
+                SELECT v.id, v.source, v.name, v.employer, v.url, v.published_at,
                        e.profile_version, e.score, e.result_json, e.created_at,
                        (
                            SELECT f.action FROM feedback f

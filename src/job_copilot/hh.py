@@ -28,6 +28,8 @@ class HHAPIError(httpx.HTTPStatusError):
 
 
 class HHClient:
+    source_name = "hh"
+
     def __init__(
         self,
         base_url: str,
@@ -151,4 +153,5 @@ def parse_vacancy(data: dict[str, Any]) -> Vacancy:
         url=data.get("alternate_url") or f"https://hh.ru/vacancy/{data['id']}",
         published_at=data.get("published_at"),
         raw=data,
+        source="hh",
     )

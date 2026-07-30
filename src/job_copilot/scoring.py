@@ -54,12 +54,17 @@ class ExplainableScorer:
         found_excluded = [term for term in profile.excluded_terms if term.lower() in text]
         if found_excluded:
             reasons.append(f"Исключённые направления: {', '.join(found_excluded)}")
-        if profile.allowed_area_ids and vacancy.area_id not in profile.allowed_area_ids:
+        if (
+            profile.allowed_area_ids
+            and vacancy.area_id is not None
+            and vacancy.area_id not in profile.allowed_area_ids
+        ):
             reasons.append("Регион не входит в список допустимых")
         if profile.remote_only and vacancy.schedule_id != "remote":
             reasons.append("Требуется удалённый формат")
         if (
             profile.accepted_experience_ids
+            and vacancy.experience_id is not None
             and vacancy.experience_id not in profile.accepted_experience_ids
         ):
             reasons.append("Не подходит требуемый опыт")

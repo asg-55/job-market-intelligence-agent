@@ -25,6 +25,7 @@ class Vacancy:
     url: str
     published_at: str | None
     raw: dict[str, Any] = field(default_factory=dict, repr=False)
+    source: str = "hh"
 
     def searchable_text(self) -> str:
         return " ".join([self.name, self.description, *self.key_skills]).lower()

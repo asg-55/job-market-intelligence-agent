@@ -9,10 +9,11 @@ from typing import Annotated, Any, Literal
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 from .bootstrap import AppContainer, build_container
 from .config import CandidateProfile, get_settings
+from .manual_import import build_manual_vacancy
 from .resume_export import build_resume_docx
 
 
@@ -144,6 +145,16 @@ class AdaptedResumeRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
 
 
+class VacancyImportRequest(BaseModel):
+    source: Literal["manual", "linkedin", "other"] = "manual"
+    name: str = Field(min_length=2, max_length=200)
+    employer: str = Field(min_length=1, max_length=200)
+    url: HttpUrl
+    description: str = Field(min_length=50, max_length=50_000)
+    remote: bool = False
+    key_skills: list[str] = Field(default_factory=list, max_length=50)
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -159,6 +170,8 @@ def capabilities(request: Request) -> dict[str, bool]:
         "telegram": current.notifier is not None,
         "hh_authenticated": bool(current.settings.hh_access_token),
         "remotive": getattr(current, "remotive", None) is not None,
+        "superjob": getattr(current, "superjob", None) is not None,
+        "jooble": getattr(current, "jooble", None) is not None,
     }
 
 
@@ -170,6 +183,24 @@ def user_app() -> FileResponse:
 @app.get("/vacancies")
 def vacancies(request: Request, limit: int = Query(default=50, ge=1, le=200)):
     return container(request).repository.list_vacancies(limit)
+
+
+@app.post("/vacancies/import", status_code=201)
+def import_vacancy(payload: VacancyImportRequest, request: Request) -> dict[str, Any]:
+    current = container(request)
+    vacancy = build_manual_vacancy(
+        name=payload.name,
+        employer=payload.employer,
+        description=payload.description,
+        url=str(payload.url),
+        source=payload.source,
+        remote=payload.remote,
+        key_skills=payload.key_skills,
+    )
+    profile = current.profile_store.load()
+    result = current.pipeline.scorer.score(vacancy, profile)
+    is_new = current.repository.save_evaluation(vacancy, result, profile.fingerprint())
+    return {"created": is_new, "vacancy": vacancy.to_dict(), "result": result.to_dict()}
 
 
 @app.get("/profile")
@@ -283,6 +314,8 @@ def automation_status(
         "telegram": current.notifier is not None,
         "hh_authenticated": bool(current.settings.hh_access_token),
         "remotive": getattr(current, "remotive", None) is not None,
+        "superjob": getattr(current, "superjob", None) is not None,
+        "jooble": getattr(current, "jooble", None) is not None,
         "profile_version": current.profile_store.load().fingerprint(),
     }
 

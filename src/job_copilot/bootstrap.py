@@ -6,12 +6,14 @@ from .config import Settings
 from .cover_letter import OpenAICompatibleCoverLetterGenerator
 from .database import Repository
 from .hh import HHClient
+from .jooble import JoobleClient
 from .llm import OpenAICompatibleEvaluator
 from .pipeline import MonitoringPipeline
 from .profile_store import ProfileStore
 from .remotive import RemotiveClient
 from .resume_advisor import OpenAICompatibleResumeAdvisor
 from .scoring import ExplainableScorer
+from .superjob import SuperJobClient
 from .telegram import TelegramNotifier
 from .telegram_bot import TelegramBotController
 
@@ -23,6 +25,8 @@ class AppContainer:
     repository: Repository
     hh: HHClient
     remotive: RemotiveClient | None
+    superjob: SuperJobClient | None
+    jooble: JoobleClient | None
     notifier: TelegramNotifier | None
     telegram_bot: TelegramBotController | None
     llm_evaluator: OpenAICompatibleEvaluator | None
@@ -34,6 +38,10 @@ class AppContainer:
         await self.hh.close()
         if self.remotive:
             await self.remotive.close()
+        if self.superjob:
+            await self.superjob.close()
+        if self.jooble:
+            await self.jooble.close()
         if self.notifier:
             await self.notifier.close()
         if self.llm_evaluator:
@@ -54,6 +62,12 @@ def build_container(settings: Settings) -> AppContainer:
             settings.remotive_base_url,
             cache_hours=settings.remotive_cache_hours,
         )
+    superjob = None
+    if settings.superjob_secret_key:
+        superjob = SuperJobClient(settings.superjob_secret_key, settings.superjob_base_url)
+    jooble = None
+    if settings.jooble_api_key:
+        jooble = JoobleClient(settings.jooble_api_key, settings.jooble_base_url)
     notifier = None
     telegram_bot = None
     if settings.telegram_bot_token and settings.telegram_chat_id:
@@ -98,7 +112,9 @@ def build_container(settings: Settings) -> AppContainer:
         llm_evaluator,
         notifier,
         settings.min_notification_score,
-        additional_sources=[remotive] if remotive else None,
+        additional_sources=[
+            source for source in (remotive, superjob, jooble) if source is not None
+        ],
     )
     return AppContainer(
         settings=settings,
@@ -106,6 +122,8 @@ def build_container(settings: Settings) -> AppContainer:
         repository=repository,
         hh=hh,
         remotive=remotive,
+        superjob=superjob,
+        jooble=jooble,
         notifier=notifier,
         telegram_bot=telegram_bot,
         llm_evaluator=llm_evaluator,

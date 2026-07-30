@@ -10,7 +10,9 @@ from docx import Document
 from pypdf import PdfReader
 
 from .database import Repository
+from .manual_import import build_manual_vacancy
 from .profile_store import ProfileStore
+from .scoring import ExplainableScorer
 from .telegram import TelegramNotifier
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024
@@ -52,6 +54,13 @@ class TelegramBotController:
                 "Как назвать это резюме? Например: <b>AI Product Engineer</b>."
             )
             return
+        if command == "/add_vacancy":
+            self.repository.save_telegram_session(chat_id, "vacancy_url")
+            await self.notifier.send_text(
+                "Пришлите ссылку на вакансию из LinkedIn или другого сайта. "
+                "Я не буду открывать страницу автоматически."
+            )
+            return
         if command == "/resumes":
             await self._list_resumes()
             return
@@ -89,6 +98,7 @@ class TelegramBotController:
             "<b>AI Job Search Copilot</b>\n\n"
             "Я помогу вести профиль и несколько резюме без ручной работы с файлами проекта.\n\n"
             "/add_resume — добавить PDF, DOCX или TXT\n"
+            "/add_vacancy — вручную добавить вакансию\n"
             "/resumes — список резюме\n"
             "/preferences — описать пожелания\n"
             "/profile — посмотреть профиль\n"
@@ -184,6 +194,35 @@ class TelegramBotController:
         if state == "resume_document":
             await self._save_document(chat_id, data, message)
             return
+        if state == "vacancy_url":
+            if not text.lower().startswith(("https://", "http://")) or len(text) > 2000:
+                await self.notifier.send_text("Пришлите полную ссылку, начинающуюся с https://")
+                return
+            data["url"] = text
+            self.repository.save_telegram_session(chat_id, "vacancy_name", data)
+            await self.notifier.send_text("Как называется вакансия?")
+            return
+        if state == "vacancy_name":
+            if not 2 <= len(text) <= 200:
+                await self.notifier.send_text("Название должно содержать от 2 до 200 символов.")
+                return
+            data["name"] = text
+            self.repository.save_telegram_session(chat_id, "vacancy_employer", data)
+            await self.notifier.send_text("Укажите название компании.")
+            return
+        if state == "vacancy_employer":
+            if not 1 <= len(text) <= 200:
+                await self.notifier.send_text("Название компании должно быть короче 200 символов.")
+                return
+            data["employer"] = text
+            self.repository.save_telegram_session(chat_id, "vacancy_description", data)
+            await self.notifier.send_text(
+                "Вставьте полный текст вакансии одним сообщением, минимум 50 символов."
+            )
+            return
+        if state == "vacancy_description":
+            await self._save_manual_vacancy(chat_id, data, text)
+            return
         self.repository.clear_telegram_session(chat_id)
         await self.notifier.send_text("Диалог устарел. Начните заново с /help.")
 
@@ -217,6 +256,30 @@ class TelegramBotController:
         await self.notifier.send_text(
             f"Готово: <b>{html.escape(resume['name'])}</b> сохранено как резюме "
             f"#{resume['id']}, версия {resume['version']}."
+        )
+
+    async def _save_manual_vacancy(
+        self, chat_id: str, data: dict[str, Any], description: str
+    ) -> None:
+        if len(description) < 50:
+            await self.notifier.send_text("Описание слишком короткое. Нужно минимум 50 символов.")
+            return
+        remote_markers = ("remote", "удалён", "удален", "из дома")
+        vacancy = build_manual_vacancy(
+            name=data["name"],
+            employer=data["employer"],
+            description=description[:50_000],
+            url=data["url"],
+            remote=any(marker in description.lower() for marker in remote_markers),
+        )
+        profile = self.profile_store.load()
+        result = ExplainableScorer().score(vacancy, profile)
+        self.repository.save_evaluation(vacancy, result, profile.fingerprint())
+        self.repository.clear_telegram_session(chat_id)
+        await self.notifier.send_text(
+            f"Вакансия <b>{html.escape(vacancy.name)}</b> сохранена.\n"
+            f"Совпадение с профилем: <b>{result.total_score}%</b>.\n"
+            f"{html.escape(result.explanation)}"
         )
 
 

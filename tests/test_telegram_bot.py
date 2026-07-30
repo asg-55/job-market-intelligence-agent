@@ -80,3 +80,34 @@ def test_resume_extractor_rejects_unsupported_file() -> None:
         assert "PDF, DOCX и TXT" in str(error)
     else:
         raise AssertionError("Unsupported resume format must be rejected")
+
+
+def test_bot_guides_user_through_manual_vacancy_import(tmp_path) -> None:
+    async def scenario() -> None:
+        repository = Repository(tmp_path / "vacancy-bot.db")
+        store = ProfileStore(tmp_path / "profile.json")
+        store.save(CandidateProfile(target_roles=["AI Engineer"], skills=["Python"]))
+        notifier = FakeNotifier()
+        bot = TelegramBotController(repository, store, notifier)
+        chat = {"id": 777}
+
+        await bot.handle_message({"chat": chat, "text": "/add_vacancy"})
+        await bot.handle_message(
+            {"chat": chat, "text": "https://www.linkedin.com/jobs/view/777"}
+        )
+        await bot.handle_message({"chat": chat, "text": "AI Engineer"})
+        await bot.handle_message({"chat": chat, "text": "Example Labs"})
+        await bot.handle_message(
+            {
+                "chat": chat,
+                "text": "Remote Python role building useful AI products and reliable services.",
+            }
+        )
+
+        rows = repository.list_vacancies()
+        assert len(rows) == 1
+        assert rows[0]["source"] == "linkedin"
+        assert repository.get_telegram_session("777") is None
+        assert "Совпадение с профилем" in notifier.messages[-1][0]
+
+    asyncio.run(scenario())

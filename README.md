@@ -8,6 +8,8 @@
 
 - несколько поисковых запросов к HH API и открытому Remotive API без HTML-парсинга;
 - независимые статусы источников: сбой одной площадки не останавливает остальные;
+- опциональные адаптеры SuperJob и Jooble активируются только локальными API-ключами;
+- ручной импорт вакансий LinkedIn и других сайтов через кабинет или Telegram без парсинга;
 - application token HH хранится только локально; CAPTCHA, OAuth и rate limit показываются как понятные статусы;
 - получение полного текста вакансии и дедупликация;
 - жёсткие фильтры по региону, формату, опыту, зарплате и стоп-словам;
@@ -71,6 +73,7 @@ Pydantic-схемой, смешивается с baseline и сохраняет�
 
 - `POST /monitor/run` — выполнить мониторинг;
 - `GET /vacancies` — показать ранжированные вакансии;
+- `POST /vacancies/import` — сохранить и сразу оценить вручную добавленную вакансию;
 - `GET`, `PUT`, `PATCH /profile` — читать и изменять живой профиль без перезапуска;
 - `POST /vacancies/{id}/feedback` — сохранить `fit`, `skip`, `applied`, `rejected` или `interview`.
 
@@ -197,6 +200,8 @@ GitHub Actions выполняет те же проверки в Docker для к
 
 Источники API: [официальная документация HH](https://api.hh.ru/openapi/redoc),
 [Remotive Remote Jobs API](https://github.com/remotive-io/remote-jobs-api) и
+[SuperJob API](https://api.superjob.ru/), [Jooble API](https://help.jooble.org/en/support/solutions/articles/60001448238-rest-api-documentation),
 [Telegram Bot API](https://core.telegram.org/bots/api). LinkedIn намеренно не собирается
 парсером: официальный API поиска вакансий недоступен обычным приложениям, а автоматический
-сбор страниц запрещён правилами площадки.
+сбор страниц запрещён правилами площадки. Пользователь может вручную перенести текст вакансии,
+после чего все функции локальной оценки и подготовки материалов работают как обычно.

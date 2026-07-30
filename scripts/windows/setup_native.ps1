@@ -1,7 +1,8 @@
 param(
     [string]$PythonExecutable = "python",
     [switch]$SkipN8n,
-    [switch]$ConfigureOnly
+    [switch]$ConfigureOnly,
+    [switch]$RotateAutomationToken
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +22,14 @@ function Initialize-LocalEnvironment {
     $envContent = [System.IO.File]::ReadAllText($envPath)
     if ($envContent -notmatch '(?m)^AUTOMATION_API_TOKEN=') {
         $envContent = $envContent.TrimEnd() + "`r`nAUTOMATION_API_TOKEN=`r`n"
+    }
+    if ($RotateAutomationToken) {
+        $envContent = [regex]::Replace(
+            $envContent,
+            '(?m)^AUTOMATION_API_TOKEN=.*\r?$',
+            'AUTOMATION_API_TOKEN=',
+            1
+        )
     }
     $tokenPattern = '(?m)^AUTOMATION_API_TOKEN=[ \t]*\r?$'
     if ($envContent -match $tokenPattern) {

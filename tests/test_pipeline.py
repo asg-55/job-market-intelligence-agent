@@ -15,6 +15,18 @@ class FakeHHClient:
         yield vacancy()
 
 
+class FailingHHClient:
+    async def search(self, query: SearchQuery, pages: int = 1):
+        del query, pages
+        if False:
+            yield vacancy()
+        raise httpx.HTTPStatusError(
+            "HH blocked the request",
+            request=httpx.Request("GET", "https://api.hh.ru/vacancies"),
+            response=httpx.Response(403),
+        )
+
+
 class FailingLLMEvaluator:
     def __init__(self) -> None:
         self.calls = 0
@@ -49,6 +61,23 @@ def test_llm_failure_falls_back_to_baseline_and_monitoring_continues(tmp_path) -
         assert summary.errors == 1
         assert llm.calls == 1
         assert repository.list_vacancies()[0]["result"]["llm_analysis"] is None
+
+    asyncio.run(scenario())
+
+
+def test_hh_failure_is_reported_without_crashing_monitoring(tmp_path) -> None:
+    async def scenario() -> None:
+        repository = Repository(tmp_path / "hh-failure.db")
+        pipeline = MonitoringPipeline(
+            FailingHHClient(), repository, ExplainableScorer()
+        )
+        candidate = profile(searches=[{"text": "LLM engineer"}])
+
+        summary = await pipeline.run(candidate)
+
+        assert summary.found == 0
+        assert summary.new == 0
+        assert summary.errors == 1
 
     asyncio.run(scenario())
 

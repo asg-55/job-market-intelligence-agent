@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 import httpx
 
-from .config import CandidateProfile, SearchProfile
+from .config import CandidateProfile, SearchProfile, SearchQuery
 from .database import Repository
+from .domain import Vacancy
 from .hh import HHClient
 from .llm import OpenAICompatibleEvaluator
 from .scoring import ExplainableScorer
@@ -45,7 +47,7 @@ class MonitoringPipeline:
         seen_in_run: set[str] = set()
         profile_version = profile.fingerprint()
         for search_profile, search in profile.active_searches():
-            async for vacancy in self.hh.search(search, pages=pages):
+            async for vacancy in self._search_safely(search, pages, summary):
                 if vacancy.id in seen_in_run:
                     self._record_search_match(vacancy.id, profile_version, search_profile)
                     continue
@@ -81,6 +83,18 @@ class MonitoringPipeline:
                     except Exception:
                         summary.errors += 1
         return summary
+
+    async def _search_safely(
+        self,
+        search: SearchQuery,
+        pages: int,
+        summary: RunSummary,
+    ) -> AsyncIterator[Vacancy]:
+        try:
+            async for vacancy in self.hh.search(search, pages=pages):
+                yield vacancy
+        except httpx.HTTPError:
+            summary.errors += 1
 
     def _record_search_match(
         self,

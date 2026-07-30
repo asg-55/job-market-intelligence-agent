@@ -8,7 +8,7 @@ import httpx
 from .config import CandidateProfile, SearchProfile, SearchQuery
 from .database import Repository
 from .domain import Vacancy
-from .hh import HHClient
+from .hh import HHAPIError, HHClient
 from .llm import OpenAICompatibleEvaluator
 from .scoring import ExplainableScorer
 from .telegram import TelegramNotifier
@@ -23,6 +23,8 @@ class RunSummary:
     passed: int = 0
     notified: int = 0
     errors: int = 0
+    source_status: str = "ok"
+    source_message: str | None = None
 
 
 class MonitoringPipeline:
@@ -82,6 +84,8 @@ class MonitoringPipeline:
                         summary.notified += 1
                     except Exception:
                         summary.errors += 1
+            if summary.source_status != "ok":
+                break
         return summary
 
     async def _search_safely(
@@ -93,8 +97,16 @@ class MonitoringPipeline:
         try:
             async for vacancy in self.hh.search(search, pages=pages):
                 yield vacancy
+        except HHAPIError as error:
+            summary.errors += 1
+            summary.source_status = error.category
+            summary.source_message = error.user_message
         except httpx.HTTPError:
             summary.errors += 1
+            summary.source_status = "unavailable"
+            summary.source_message = (
+                "Не удалось подключиться к HH. Проверим соединение при следующем запуске."
+            )
 
     def _record_search_match(
         self,

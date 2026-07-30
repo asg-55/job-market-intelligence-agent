@@ -5,6 +5,7 @@ from test_scoring import profile, vacancy
 
 from job_copilot.config import SearchQuery
 from job_copilot.database import Repository
+from job_copilot.hh import HHAPIError
 from job_copilot.pipeline import MonitoringPipeline
 from job_copilot.scoring import ExplainableScorer
 
@@ -20,10 +21,13 @@ class FailingHHClient:
         del query, pages
         if False:
             yield vacancy()
-        raise httpx.HTTPStatusError(
+        request = httpx.Request("GET", "https://api.hh.ru/vacancies")
+        raise HHAPIError(
             "HH blocked the request",
-            request=httpx.Request("GET", "https://api.hh.ru/vacancies"),
-            response=httpx.Response(403),
+            category="captcha",
+            user_message="HH requires CAPTCHA",
+            request=request,
+            response=httpx.Response(403, request=request),
         )
 
 
@@ -78,6 +82,8 @@ def test_hh_failure_is_reported_without_crashing_monitoring(tmp_path) -> None:
         assert summary.found == 0
         assert summary.new == 0
         assert summary.errors == 1
+        assert summary.source_status == "captcha"
+        assert summary.source_message == "HH requires CAPTCHA"
 
     asyncio.run(scenario())
 

@@ -1,6 +1,6 @@
 {
   "id": "job-copilot-hh-monitor-v1",
-  "name": "Job Copilot — HH monitoring",
+  "name": "Job Copilot — multi-source monitoring",
   "nodes": [
     {
       "parameters": {
@@ -49,7 +49,7 @@
     {
       "parameters": {
         "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
-        "text": "=Job Copilot завершил мониторинг.\n\nНайдено: {{ $json.found }}\nНовых: {{ $json.new }}\nПрошли фильтры: {{ $json.passed }}\nОтправлено вакансий: {{ $json.notified }}\nОшибок: {{ $json.errors }}\n\n{{ $json.source_message || 'HH API: доступен' }}",
+        "text": "=Job Copilot завершил мониторинг.\n\nНайдено: {{ $json.found }}\nНовых: {{ $json.new }}\nПрошли фильтры: {{ $json.passed }}\nОтправлено вакансий: {{ $json.notified }}\nОшибок: {{ $json.errors }}\n\n{{ $json.source_message || 'Источники вакансий: доступны' }}",
         "additionalFields": {
           "appendAttribution": false
         }

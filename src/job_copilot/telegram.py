@@ -50,6 +50,7 @@ class TelegramNotifier:
             f"🔥 <b>Совпадение: {result.total_score}%</b>\n\n"
             f"<b>{html.escape(vacancy.name)}</b>\n"
             f"Компания: {html.escape(vacancy.employer)}\n"
+            f"Источник: {html.escape(vacancy.source.title())}\n"
             f"{search_context}"
             f"Формат: {html.escape(vacancy.schedule_name or 'не указан')}\n"
             f"Опыт: {html.escape(vacancy.experience_name or 'не указан')}\n\n"

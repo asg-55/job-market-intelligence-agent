@@ -158,6 +158,7 @@ def capabilities(request: Request) -> dict[str, bool]:
         "resume_advice": current.resume_advisor is not None,
         "telegram": current.notifier is not None,
         "hh_authenticated": bool(current.settings.hh_access_token),
+        "remotive": getattr(current, "remotive", None) is not None,
     }
 
 
@@ -281,6 +282,7 @@ def automation_status(
         "llm": bool(current.settings.llm_model),
         "telegram": current.notifier is not None,
         "hh_authenticated": bool(current.settings.hh_access_token),
+        "remotive": getattr(current, "remotive", None) is not None,
         "profile_version": current.profile_store.load().fingerprint(),
     }
 

@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     hh_base_url: str = "https://api.hh.ru"
     hh_user_agent: str = "JobMarketIntelligenceAgent/0.1 (configure-email@example.com)"
     hh_access_token: str | None = None
+    remotive_enabled: bool = True
+    remotive_base_url: str = "https://remotive.com/api"
+    remotive_cache_hours: int = Field(default=6, ge=1, le=24)
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     telegram_webhook_secret: str | None = None

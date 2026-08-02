@@ -12,6 +12,7 @@ from .domain import Vacancy
 from .hh import HHAPIError, HHClient
 from .llm import OpenAICompatibleEvaluator
 from .scoring import ExplainableScorer
+from .sources import SourceAPIError
 from .telegram import TelegramNotifier
 
 
@@ -116,6 +117,8 @@ class MonitoringPipeline:
             async for vacancy in source.search(search, pages=pages):
                 yield vacancy
         except HHAPIError as error:
+            self._record_source_error(summary, source_name, error.category, error.user_message)
+        except SourceAPIError as error:
             self._record_source_error(summary, source_name, error.category, error.user_message)
         except httpx.HTTPError:
             self._record_source_error(

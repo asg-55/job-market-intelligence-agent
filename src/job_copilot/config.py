@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     remotive_enabled: bool = True
     remotive_base_url: str = "https://remotive.com/api"
     remotive_cache_hours: int = Field(default=6, ge=1, le=24)
+    superjob_secret_key: str | None = None
+    superjob_base_url: str = "https://api.superjob.ru/2.0"
+    jooble_api_key: str | None = None
+    jooble_base_url: str = "https://jooble.org/api"
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     telegram_webhook_secret: str | None = None

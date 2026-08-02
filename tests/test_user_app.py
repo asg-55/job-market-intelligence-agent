@@ -23,6 +23,8 @@ def test_user_app_and_assets_are_served() -> None:
         assert "openVacancy" in script.text
         assert "generate-advice" in page.text
         assert "run-monitor" in page.text
+        assert "import-vacancy" in page.text
+        assert "vacancy-import-form" in page.text
         assert "create-adapted-copy" in page.text
         assert "export.docx" in script.text
 

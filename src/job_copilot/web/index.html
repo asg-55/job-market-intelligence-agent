@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#10231f" />
     <title>Job Copilot — кабинет</title>
-    <link rel="stylesheet" href="/app-assets/app.css" />
+    <link rel="stylesheet" href="/app-assets/app.css?v=3" />
   </head>
   <body>
     <div class="shell">
@@ -69,7 +69,7 @@
         </section>
 
         <section class="view" id="view-vacancies">
-          <div class="section-heading"><div><p class="eyebrow">Результаты мониторинга</p><h2>Подходящие вакансии</h2><p>Оцените совпадение, выберите резюме и подготовьте материалы.</p></div><div class="button-row"><button class="secondary" id="refresh-vacancies">Обновить</button><button class="primary" id="run-monitor">Запустить поиск</button></div></div>
+          <div class="section-heading"><div><p class="eyebrow">Результаты мониторинга</p><h2>Подходящие вакансии</h2><p>Оцените совпадение, выберите резюме и подготовьте материалы.</p></div><div class="button-row"><button class="secondary" id="import-vacancy">+ Добавить по ссылке</button><button class="secondary" id="refresh-vacancies">Обновить</button><button class="primary" id="run-monitor">Запустить поиск</button></div></div>
           <div id="vacancy-list" class="stack"></div>
         </section>
       </main>
@@ -83,6 +83,22 @@
         <label><span>Целевые роли</span><input id="resume-roles" placeholder="AI Engineer, LLM Engineer" /></label>
         <label><span>Текст резюме</span><textarea id="resume-content" required minlength="50" maxlength="30000" rows="14"></textarea></label>
         <div class="dialog-actions"><button class="secondary" value="cancel">Отмена</button><button class="primary" id="save-resume" value="default">Сохранить</button></div>
+      </form>
+    </dialog>
+    <dialog id="vacancy-import-dialog">
+      <form id="vacancy-import-form">
+        <div class="dialog-head"><div><p class="eyebrow">Ручной импорт</p><h3>Добавить вакансию</h3></div><button class="icon-button" type="button" id="close-vacancy-import" aria-label="Закрыть">×</button></div>
+        <p class="form-help">Скопируйте данные из LinkedIn или другого сайта. Приложение не будет автоматически открывать или парсить страницу.</p>
+        <div class="form-grid">
+          <label><span>Источник</span><select id="import-source"><option value="linkedin">LinkedIn</option><option value="manual">Другой сайт</option></select></label>
+          <label><span>Ссылка</span><input id="import-url" type="url" required placeholder="https://www.linkedin.com/jobs/view/..." /></label>
+          <label><span>Название вакансии</span><input id="import-name" required maxlength="200" /></label>
+          <label><span>Компания</span><input id="import-employer" required maxlength="200" /></label>
+          <label class="wide"><span>Ключевые навыки</span><input id="import-skills" placeholder="Python, RAG, FastAPI" /></label>
+          <label class="toggle wide"><input id="import-remote" type="checkbox" /><span>Удалённая работа</span></label>
+          <label class="wide"><span>Описание вакансии</span><textarea id="import-description" required minlength="50" maxlength="50000" rows="12" placeholder="Вставьте полный текст вакансии"></textarea></label>
+        </div>
+        <div class="dialog-actions"><button class="secondary" type="button" id="cancel-vacancy-import">Отмена</button><button class="primary" type="submit">Сохранить и оценить</button></div>
       </form>
     </dialog>
     <dialog id="vacancy-dialog" class="workspace-dialog">
@@ -113,10 +129,10 @@
             <button class="secondary adapted-copy-button" id="create-adapted-copy" hidden>Создать рабочую копию резюме</button>
           </section>
         </div>
-        <footer class="workspace-footer"><a id="workspace-link" class="secondary external-button" target="_blank" rel="noopener">Открыть на hh.ru ↗</a></footer>
+        <footer class="workspace-footer"><a id="workspace-link" class="secondary external-button" target="_blank" rel="noopener">Открыть источник ↗</a></footer>
       </div>
     </dialog>
     <div class="toast" id="toast" role="status"></div>
-    <script src="/app-assets/app.js" defer></script>
+    <script src="/app-assets/app.js?v=3" defer></script>
   </body>
 </html>

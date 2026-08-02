@@ -17,10 +17,14 @@ class ProfileStoreStub:
 class PipelineStub:
     def __init__(self) -> None:
         self.pages: list[int] = []
+        self.triggers: list[str] = []
 
-    async def run(self, profile: CandidateProfile, pages: int = 1) -> dict:
+    async def run(
+        self, profile: CandidateProfile, pages: int = 1, trigger: str = "manual"
+    ) -> dict:
         assert profile.name == "Alex"
         self.pages.append(pages)
+        self.triggers.append(trigger)
         return asdict(RunSummary(found=4, new=2, notified=1))
 
 
@@ -57,6 +61,7 @@ def test_automation_routes_require_shared_token() -> None:
         assert run.status_code == 200
         assert run.json()["notified"] == 1
         assert pipeline.pages == [2]
+        assert pipeline.triggers == ["automation"]
 
     asyncio.run(scenario())
 

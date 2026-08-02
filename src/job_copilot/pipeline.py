@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
 import httpx
@@ -55,7 +55,9 @@ class MonitoringPipeline:
         self.notifier = notifier
         self.notification_threshold = notification_threshold
 
-    async def run(self, profile: CandidateProfile, pages: int = 1) -> RunSummary:
+    async def run(
+        self, profile: CandidateProfile, pages: int = 1, trigger: str = "manual"
+    ) -> RunSummary:
         summary = RunSummary()
         seen_in_run: set[str] = set()
         profile_version = profile.fingerprint()
@@ -103,6 +105,7 @@ class MonitoringPipeline:
                 if summary.sources[source_name]["status"] != "ok":
                     break
         self._summarize_sources(summary)
+        self.repository.save_monitor_run(trigger, profile_version, asdict(summary))
         return summary
 
     async def _search_safely(

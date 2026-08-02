@@ -185,6 +185,30 @@ def vacancies(request: Request, limit: int = Query(default=50, ge=1, le=200)):
     return container(request).repository.list_vacancies(limit)
 
 
+@app.get("/analytics/overview")
+def analytics_overview(request: Request) -> dict[str, Any]:
+    current = container(request)
+    result = current.repository.analytics_overview()
+    result["integrations"] = {
+        "hh": {
+            "enabled": True,
+            "authenticated": bool(current.settings.hh_access_token),
+        },
+        "remotive": {"enabled": getattr(current, "remotive", None) is not None},
+        "superjob": {"enabled": getattr(current, "superjob", None) is not None},
+        "jooble": {"enabled": getattr(current, "jooble", None) is not None},
+        "linkedin": {"enabled": True, "mode": "manual"},
+    }
+    return result
+
+
+@app.get("/monitor/runs")
+def monitor_runs(
+    request: Request, limit: int = Query(default=20, ge=1, le=100)
+) -> list[dict[str, Any]]:
+    return container(request).repository.list_monitor_runs(limit)
+
+
 @app.post("/vacancies/import", status_code=201)
 def import_vacancy(payload: VacancyImportRequest, request: Request) -> dict[str, Any]:
     current = container(request)
@@ -299,7 +323,9 @@ def export_resume(resume_id: int, request: Request) -> StreamingResponse:
 @app.post("/monitor/run")
 async def run_monitor(request: Request, pages: int = Query(default=1, ge=1, le=10)):
     current = container(request)
-    return await current.pipeline.run(current.profile_store.load(), pages=pages)
+    return await current.pipeline.run(
+        current.profile_store.load(), pages=pages, trigger="manual"
+    )
 
 
 @app.get("/automation/status")
@@ -327,7 +353,9 @@ async def automation_run_monitor(
     x_automation_token: Annotated[str | None, Header()] = None,
 ):
     current = require_automation_token(request, x_automation_token)
-    return await current.pipeline.run(current.profile_store.load(), pages=pages)
+    return await current.pipeline.run(
+        current.profile_store.load(), pages=pages, trigger="automation"
+    )
 
 
 @app.post("/vacancies/{vacancy_id}/feedback", status_code=204)

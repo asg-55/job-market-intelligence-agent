@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#10231f" />
     <title>Job Copilot — кабинет</title>
-    <link rel="stylesheet" href="/app-assets/app.css?v=3" />
+    <link rel="stylesheet" href="/app-assets/app.css?v=5" />
   </head>
   <body>
     <div class="shell">
@@ -15,61 +15,243 @@
           <span><b>Job Copilot</b><small>Поиск с ясной головой</small></span>
         </a>
         <nav aria-label="Разделы">
-          <button class="nav-item active" data-view="overview"><span>⌂</span>Обзор</button>
-          <button class="nav-item" data-view="profile"><span>◎</span>Мой профиль</button>
-          <button class="nav-item" data-view="resumes"><span>▤</span>Резюме</button>
-          <button class="nav-item" data-view="searches"><span>⌕</span>Направления</button>
-          <button class="nav-item" data-view="vacancies"><span>✦</span>Вакансии</button>
+          <button class="nav-item active" data-view="overview">
+            <span>⌂</span>Обзор
+          </button>
+          <button class="nav-item" data-view="profile">
+            <span>◎</span>Мой профиль
+          </button>
+          <button class="nav-item" data-view="resumes">
+            <span>▤</span>Резюме
+          </button>
+          <button class="nav-item" data-view="searches">
+            <span>⌕</span>Направления
+          </button>
+          <button class="nav-item" data-view="vacancies">
+            <span>✦</span>Вакансии
+          </button>
         </nav>
         <div class="privacy-note"><span>●</span> Данные хранятся локально</div>
       </aside>
 
       <main>
         <header class="topbar">
-          <div><p class="eyebrow">Личный кабинет</p><h1 id="page-title">Добрый день</h1></div>
+          <div>
+            <p class="eyebrow">Личный кабинет</p>
+            <h1 id="page-title">Добрый день</h1>
+          </div>
           <div class="status"><i></i><span>Система готова</span></div>
         </header>
 
         <section class="view active" id="view-overview">
           <div class="hero">
-            <div><span class="pill">AI JOB SEARCH COPILOT</span><h2>Ваша карьера —<br /><em>не поток вкладок.</em></h2><p>Соберите профиль, резюме и направления поиска в одном спокойном рабочем пространстве.</p><button class="primary" data-go="profile">Заполнить профиль <span>→</span></button></div>
-            <div class="orbit" aria-hidden="true"><div class="orbit-ring"><span>AI</span></div><small>анализирует<br />и объясняет</small></div>
+            <div>
+              <span class="pill">AI JOB SEARCH COPILOT</span>
+              <h2>Ваша карьера —<br /><em>не поток вкладок.</em></h2>
+              <p>
+                Соберите профиль, резюме и направления поиска в одном спокойном
+                рабочем пространстве.
+              </p>
+              <button class="primary" data-go="profile">
+                Заполнить профиль <span>→</span>
+              </button>
+            </div>
+            <div class="orbit" aria-hidden="true">
+              <div class="orbit-ring"><span>AI</span></div>
+              <small>анализирует<br />и объясняет</small>
+            </div>
           </div>
           <div class="metric-grid">
-            <article><span>Резюме</span><strong id="metric-resumes">—</strong><small>активных версий</small></article>
-            <article><span>Направления</span><strong id="metric-searches">—</strong><small>профилей поиска</small></article>
-            <article><span>Вакансии</span><strong id="metric-vacancies">—</strong><small>в базе наблюдения</small></article>
-            <article class="accent"><span>Следующий шаг</span><strong>Проверьте факты</strong><small>AI использует только подтверждённое</small></article>
+            <article>
+              <span>Резюме</span><strong id="metric-resumes">—</strong
+              ><small>активных версий</small>
+            </article>
+            <article>
+              <span>Направления</span><strong id="metric-searches">—</strong
+              ><small>профилей поиска</small>
+            </article>
+            <article>
+              <span>Вакансии</span><strong id="metric-vacancies">—</strong
+              ><small>в базе наблюдения</small>
+            </article>
+            <article class="accent">
+              <span>Следующий шаг</span><strong>Проверьте факты</strong
+              ><small>AI использует только подтверждённое</small>
+            </article>
           </div>
-          <div class="section-heading"><div><p class="eyebrow">Рабочий процесс</p><h3>Три шага до точного поиска</h3></div></div>
-          <div class="steps"><article><b>01</b><h4>Расскажите о себе</h4><p>Роли, навыки, пожелания и только проверяемые факты.</p></article><article><b>02</b><h4>Добавьте версии</h4><p>Отдельные резюме под Product, Engineering и Operations.</p></article><article><b>03</b><h4>Включите поиск</h4><p>Copilot найдёт, сравнит и пришлёт лучшие варианты в Telegram.</p></article></div>
+          <div class="analytics-grid">
+            <article class="panel analytics-panel">
+              <div class="analytics-heading">
+                <div>
+                  <p class="eyebrow">Покрытие рынка</p>
+                  <h3>Источники</h3>
+                </div>
+                <small>Последний запуск и накопленная база</small>
+              </div>
+              <div id="source-health" class="analytics-list"></div>
+            </article>
+            <article class="panel analytics-panel">
+              <div class="analytics-heading">
+                <div>
+                  <p class="eyebrow">Качество подбора</p>
+                  <h3>Распределение совпадений</h3>
+                </div>
+                <small id="analytics-passed">—</small>
+              </div>
+              <div id="score-distribution" class="analytics-list"></div>
+            </article>
+          </div>
+          <article class="panel run-panel">
+            <div class="analytics-heading">
+              <div>
+                <p class="eyebrow">Наблюдаемость</p>
+                <h3>Последние запуски</h3>
+              </div>
+              <small>История хранится локально</small>
+            </div>
+            <div id="run-history" class="run-history"></div>
+          </article>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Рабочий процесс</p>
+              <h3>Три шага до точного поиска</h3>
+            </div>
+          </div>
+          <div class="steps">
+            <article>
+              <b>01</b>
+              <h4>Расскажите о себе</h4>
+              <p>Роли, навыки, пожелания и только проверяемые факты.</p>
+            </article>
+            <article>
+              <b>02</b>
+              <h4>Добавьте версии</h4>
+              <p>Отдельные резюме под Product, Engineering и Operations.</p>
+            </article>
+            <article>
+              <b>03</b>
+              <h4>Включите поиск</h4>
+              <p>
+                Copilot найдёт, сравнит и пришлёт лучшие варианты в Telegram.
+              </p>
+            </article>
+          </div>
         </section>
 
         <section class="view" id="view-profile">
-          <div class="section-heading"><div><p class="eyebrow">Основа рекомендаций</p><h2>Мой профиль</h2><p>Эти данные можно менять в любой момент.</p></div><button class="primary" type="submit" form="profile-form">Сохранить</button></div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Основа рекомендаций</p>
+              <h2>Мой профиль</h2>
+              <p>Эти данные можно менять в любой момент.</p>
+            </div>
+            <button class="primary" type="submit" form="profile-form">
+              Сохранить
+            </button>
+          </div>
           <form class="panel form-grid" id="profile-form">
-            <label><span>Имя</span><input id="profile-name" required maxlength="120" /></label>
-            <label><span>Целевые роли</span><input id="profile-roles" placeholder="AI Engineer, Prompt Engineer" /></label>
-            <label class="wide"><span>Навыки</span><textarea id="profile-skills" rows="3" placeholder="Python, RAG, Docker"></textarea><small>Перечислите через запятую</small></label>
-            <label><span>Минимальная зарплата</span><input id="profile-salary" type="number" min="0" placeholder="Не указана" /></label>
-            <label class="toggle"><input id="profile-remote" type="checkbox" /><span>Только удалённая работа</span></label>
-            <label class="wide"><span>Пожелания к работе</span><textarea id="profile-preferences" rows="5" placeholder="Какие задачи интересны, желаемый формат, ограничения..."></textarea></label>
-            <label class="wide"><span>Подтверждённые факты</span><textarea id="profile-facts" rows="5" placeholder="Один реальный факт на строку"></textarea><small>Только то, что можно честно использовать в письмах и резюме</small></label>
+            <label
+              ><span>Имя</span
+              ><input id="profile-name" required maxlength="120"
+            /></label>
+            <label
+              ><span>Целевые роли</span
+              ><input
+                id="profile-roles"
+                placeholder="AI Engineer, Prompt Engineer"
+            /></label>
+            <label class="wide"
+              ><span>Навыки</span
+              ><textarea
+                id="profile-skills"
+                rows="3"
+                placeholder="Python, RAG, Docker"
+              ></textarea
+              ><small>Перечислите через запятую</small></label
+            >
+            <label
+              ><span>Минимальная зарплата</span
+              ><input
+                id="profile-salary"
+                type="number"
+                min="0"
+                placeholder="Не указана"
+            /></label>
+            <label class="toggle"
+              ><input id="profile-remote" type="checkbox" /><span
+                >Только удалённая работа</span
+              ></label
+            >
+            <label class="wide"
+              ><span>Пожелания к работе</span
+              ><textarea
+                id="profile-preferences"
+                rows="5"
+                placeholder="Какие задачи интересны, желаемый формат, ограничения..."
+              ></textarea>
+            </label>
+            <label class="wide"
+              ><span>Подтверждённые факты</span
+              ><textarea
+                id="profile-facts"
+                rows="5"
+                placeholder="Один реальный факт на строку"
+              ></textarea
+              ><small
+                >Только то, что можно честно использовать в письмах и
+                резюме</small
+              ></label
+            >
           </form>
         </section>
 
         <section class="view" id="view-resumes">
-          <div class="section-heading"><div><p class="eyebrow">Библиотека документов</p><h2>Мои резюме</h2><p>Храните отдельную основу для каждого карьерного направления.</p></div><button class="primary" id="add-resume">+ Добавить резюме</button></div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Библиотека документов</p>
+              <h2>Мои резюме</h2>
+              <p>
+                Храните отдельную основу для каждого карьерного направления.
+              </p>
+            </div>
+            <button class="primary" id="add-resume">+ Добавить резюме</button>
+          </div>
           <div class="card-grid" id="resume-list"></div>
         </section>
 
         <section class="view" id="view-searches">
-          <div class="section-heading"><div><p class="eyebrow">Стратегия мониторинга</p><h2>Направления поиска</h2><p>Каждому направлению — свои запросы и предпочтительное резюме.</p></div><div class="button-row"><button class="secondary" id="add-search">+ Направление</button><button class="primary" id="save-searches">Сохранить</button></div></div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Стратегия мониторинга</p>
+              <h2>Направления поиска</h2>
+              <p>
+                Каждому направлению — свои запросы и предпочтительное резюме.
+              </p>
+            </div>
+            <div class="button-row">
+              <button class="secondary" id="add-search">+ Направление</button
+              ><button class="primary" id="save-searches">Сохранить</button>
+            </div>
+          </div>
           <div id="search-list" class="stack"></div>
         </section>
 
         <section class="view" id="view-vacancies">
-          <div class="section-heading"><div><p class="eyebrow">Результаты мониторинга</p><h2>Подходящие вакансии</h2><p>Оцените совпадение, выберите резюме и подготовьте материалы.</p></div><div class="button-row"><button class="secondary" id="import-vacancy">+ Добавить по ссылке</button><button class="secondary" id="refresh-vacancies">Обновить</button><button class="primary" id="run-monitor">Запустить поиск</button></div></div>
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Результаты мониторинга</p>
+              <h2>Подходящие вакансии</h2>
+              <p>
+                Оцените совпадение, выберите резюме и подготовьте материалы.
+              </p>
+            </div>
+            <div class="button-row">
+              <button class="secondary" id="import-vacancy">
+                + Добавить по ссылке</button
+              ><button class="secondary" id="refresh-vacancies">Обновить</button
+              ><button class="primary" id="run-monitor">Запустить поиск</button>
+            </div>
+          </div>
           <div id="vacancy-list" class="stack"></div>
         </section>
       </main>
@@ -77,37 +259,137 @@
 
     <dialog id="resume-dialog">
       <form method="dialog" id="resume-form">
-        <div class="dialog-head"><div><p class="eyebrow">Документ</p><h3 id="resume-dialog-title">Новое резюме</h3></div><button class="icon-button" value="cancel" aria-label="Закрыть">×</button></div>
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Документ</p>
+            <h3 id="resume-dialog-title">Новое резюме</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Закрыть">
+            ×
+          </button>
+        </div>
         <input id="resume-id" type="hidden" />
-        <label><span>Название</span><input id="resume-name" required maxlength="120" placeholder="AI Product Engineer" /></label>
-        <label><span>Целевые роли</span><input id="resume-roles" placeholder="AI Engineer, LLM Engineer" /></label>
-        <label><span>Текст резюме</span><textarea id="resume-content" required minlength="50" maxlength="30000" rows="14"></textarea></label>
-        <div class="dialog-actions"><button class="secondary" value="cancel">Отмена</button><button class="primary" id="save-resume" value="default">Сохранить</button></div>
+        <label
+          ><span>Название</span
+          ><input
+            id="resume-name"
+            required
+            maxlength="120"
+            placeholder="AI Product Engineer"
+        /></label>
+        <label
+          ><span>Целевые роли</span
+          ><input id="resume-roles" placeholder="AI Engineer, LLM Engineer"
+        /></label>
+        <label
+          ><span>Текст резюме</span
+          ><textarea
+            id="resume-content"
+            required
+            minlength="50"
+            maxlength="30000"
+            rows="14"
+          ></textarea>
+        </label>
+        <div class="dialog-actions">
+          <button class="secondary" value="cancel">Отмена</button
+          ><button class="primary" id="save-resume" value="default">
+            Сохранить
+          </button>
+        </div>
       </form>
     </dialog>
     <dialog id="vacancy-import-dialog">
       <form id="vacancy-import-form">
-        <div class="dialog-head"><div><p class="eyebrow">Ручной импорт</p><h3>Добавить вакансию</h3></div><button class="icon-button" type="button" id="close-vacancy-import" aria-label="Закрыть">×</button></div>
-        <p class="form-help">Скопируйте данные из LinkedIn или другого сайта. Приложение не будет автоматически открывать или парсить страницу.</p>
-        <div class="form-grid">
-          <label><span>Источник</span><select id="import-source"><option value="linkedin">LinkedIn</option><option value="manual">Другой сайт</option></select></label>
-          <label><span>Ссылка</span><input id="import-url" type="url" required placeholder="https://www.linkedin.com/jobs/view/..." /></label>
-          <label><span>Название вакансии</span><input id="import-name" required maxlength="200" /></label>
-          <label><span>Компания</span><input id="import-employer" required maxlength="200" /></label>
-          <label class="wide"><span>Ключевые навыки</span><input id="import-skills" placeholder="Python, RAG, FastAPI" /></label>
-          <label class="toggle wide"><input id="import-remote" type="checkbox" /><span>Удалённая работа</span></label>
-          <label class="wide"><span>Описание вакансии</span><textarea id="import-description" required minlength="50" maxlength="50000" rows="12" placeholder="Вставьте полный текст вакансии"></textarea></label>
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Ручной импорт</p>
+            <h3>Добавить вакансию</h3>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            id="close-vacancy-import"
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
         </div>
-        <div class="dialog-actions"><button class="secondary" type="button" id="cancel-vacancy-import">Отмена</button><button class="primary" type="submit">Сохранить и оценить</button></div>
+        <p class="form-help">
+          Скопируйте данные из LinkedIn или другого сайта. Приложение не будет
+          автоматически открывать или парсить страницу.
+        </p>
+        <div class="form-grid">
+          <label
+            ><span>Источник</span
+            ><select id="import-source">
+              <option value="linkedin">LinkedIn</option>
+              <option value="manual">Другой сайт</option>
+            </select></label
+          >
+          <label
+            ><span>Ссылка</span
+            ><input
+              id="import-url"
+              type="url"
+              required
+              placeholder="https://www.linkedin.com/jobs/view/..."
+          /></label>
+          <label
+            ><span>Название вакансии</span
+            ><input id="import-name" required maxlength="200"
+          /></label>
+          <label
+            ><span>Компания</span
+            ><input id="import-employer" required maxlength="200"
+          /></label>
+          <label class="wide"
+            ><span>Ключевые навыки</span
+            ><input id="import-skills" placeholder="Python, RAG, FastAPI"
+          /></label>
+          <label class="toggle wide"
+            ><input id="import-remote" type="checkbox" /><span
+              >Удалённая работа</span
+            ></label
+          >
+          <label class="wide"
+            ><span>Описание вакансии</span
+            ><textarea
+              id="import-description"
+              required
+              minlength="50"
+              maxlength="50000"
+              rows="12"
+              placeholder="Вставьте полный текст вакансии"
+            ></textarea>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="secondary" type="button" id="cancel-vacancy-import">
+            Отмена</button
+          ><button class="primary" type="submit">Сохранить и оценить</button>
+        </div>
       </form>
     </dialog>
     <dialog id="vacancy-dialog" class="workspace-dialog">
       <div class="workspace-shell">
         <header class="workspace-head">
-          <div><p class="eyebrow">Рабочее место вакансии</p><h3 id="workspace-title">Вакансия</h3><p id="workspace-company"></p></div>
-          <button class="icon-button" id="close-workspace" aria-label="Закрыть">×</button>
+          <div>
+            <p class="eyebrow">Рабочее место вакансии</p>
+            <h3 id="workspace-title">Вакансия</h3>
+            <p id="workspace-company"></p>
+          </div>
+          <button class="icon-button" id="close-workspace" aria-label="Закрыть">
+            ×
+          </button>
         </header>
-        <div class="workspace-score"><strong id="workspace-score">—</strong><div><b>Совпадение с профилем</b><p id="workspace-explanation"></p></div></div>
+        <div class="workspace-score">
+          <strong id="workspace-score">—</strong>
+          <div>
+            <b>Совпадение с профилем</b>
+            <p id="workspace-explanation"></p>
+          </div>
+        </div>
         <div class="workspace-columns">
           <section>
             <h4>Почему подходит</h4>
@@ -116,23 +398,59 @@
             <div id="workspace-missing" class="chip-list muted-chips"></div>
             <h4>Статус вакансии</h4>
             <div class="feedback-grid" id="feedback-actions">
-              <button data-action="fit">Подходит</button><button data-action="skip">Пропустить</button>
-              <button data-action="applied">Откликнулся</button><button data-action="interview">Собеседование</button>
+              <button data-action="fit">Подходит</button
+              ><button data-action="skip">Пропустить</button>
+              <button data-action="applied">Откликнулся</button
+              ><button data-action="interview">Собеседование</button>
               <button data-action="rejected">Отказ</button>
             </div>
           </section>
           <section class="assistant-panel">
-            <div class="assistant-title"><div><p class="eyebrow">AI-помощник</p><h4>Материалы для отклика</h4></div><span id="llm-state"></span></div>
-            <label><span>Базовое резюме</span><select id="workspace-resume"></select></label>
-            <div class="button-row workspace-actions"><button class="secondary" id="generate-advice">Адаптировать резюме</button><button class="primary" id="generate-letter">Написать письмо</button></div>
-            <div id="assistant-output" class="assistant-output"><p>Выберите действие — результат появится здесь и сохранится в истории.</p></div>
-            <button class="secondary adapted-copy-button" id="create-adapted-copy" hidden>Создать рабочую копию резюме</button>
+            <div class="assistant-title">
+              <div>
+                <p class="eyebrow">AI-помощник</p>
+                <h4>Материалы для отклика</h4>
+              </div>
+              <span id="llm-state"></span>
+            </div>
+            <label
+              ><span>Базовое резюме</span
+              ><select id="workspace-resume"></select
+            ></label>
+            <div class="button-row workspace-actions">
+              <button class="secondary" id="generate-advice">
+                Адаптировать резюме</button
+              ><button class="primary" id="generate-letter">
+                Написать письмо
+              </button>
+            </div>
+            <div id="assistant-output" class="assistant-output">
+              <p>
+                Выберите действие — результат появится здесь и сохранится в
+                истории.
+              </p>
+            </div>
+            <button
+              class="secondary adapted-copy-button"
+              id="create-adapted-copy"
+              hidden
+            >
+              Создать рабочую копию резюме
+            </button>
           </section>
         </div>
-        <footer class="workspace-footer"><a id="workspace-link" class="secondary external-button" target="_blank" rel="noopener">Открыть источник ↗</a></footer>
+        <footer class="workspace-footer">
+          <a
+            id="workspace-link"
+            class="secondary external-button"
+            target="_blank"
+            rel="noopener"
+            >Открыть источник ↗</a
+          >
+        </footer>
       </div>
     </dialog>
     <div class="toast" id="toast" role="status"></div>
-    <script src="/app-assets/app.js?v=3" defer></script>
+    <script src="/app-assets/app.js?v=5" defer></script>
   </body>
 </html>

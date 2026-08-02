@@ -114,6 +114,9 @@ def test_secondary_source_continues_when_hh_is_blocked(tmp_path) -> None:
         assert summary.source_status == "partial"
         assert summary.sources["hh"]["status"] == "captcha"
         assert summary.sources["remotive"]["status"] == "ok"
+        runs = repository.list_monitor_runs()
+        assert runs[0]["trigger"] == "manual"
+        assert runs[0]["summary"]["new"] == 1
 
     asyncio.run(scenario())
 

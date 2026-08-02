@@ -13,10 +13,12 @@ from .bootstrap import build_container
 from .config import get_settings
 
 
-async def _run(pages: int) -> None:
+async def _run(pages: int, trigger: str = "cli") -> None:
     current = build_container(get_settings())
     try:
-        summary = await current.pipeline.run(current.profile_store.load(), pages=pages)
+        summary = await current.pipeline.run(
+            current.profile_store.load(), pages=pages, trigger=trigger
+        )
         print(json.dumps(asdict(summary), ensure_ascii=False, indent=2))
     finally:
         await current.close()
@@ -27,7 +29,7 @@ async def _watch(pages: int, interval: int) -> None:
         raise SystemExit("Interval must be at least 60 seconds")
     while True:
         try:
-            await _run(pages)
+            await _run(pages, trigger="scheduler")
         except Exception as error:
             print(f"Monitoring run failed: {error!r}", flush=True)
         await asyncio.sleep(interval)

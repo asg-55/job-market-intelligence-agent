@@ -26,6 +26,10 @@ def test_user_app_and_assets_are_served() -> None:
         assert "import-vacancy" in page.text
         assert "vacancy-import-form" in page.text
         assert "create-adapted-copy" in page.text
+        assert "source-health" in page.text
+        assert "score-distribution" in page.text
+        assert "run-history" in page.text
+        assert "renderAnalytics" in script.text
         assert "export.docx" in script.text
 
     asyncio.run(scenario())

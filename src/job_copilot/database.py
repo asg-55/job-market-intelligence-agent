@@ -112,6 +112,13 @@ class Repository:
                     FOREIGN KEY(vacancy_id) REFERENCES vacancies(id),
                     FOREIGN KEY(resume_id) REFERENCES resumes(id)
                 );
+                CREATE TABLE IF NOT EXISTS monitor_runs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    trigger TEXT NOT NULL,
+                    profile_version TEXT NOT NULL,
+                    summary_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
                 """
             )
             self._ensure_column(connection, "resume_advice", "resume_id", "INTEGER")
@@ -191,6 +198,81 @@ class Repository:
                 ),
             )
         return is_new
+
+    def save_monitor_run(
+        self,
+        trigger: str,
+        profile_version: str,
+        summary: dict[str, Any],
+    ) -> int:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """INSERT INTO monitor_runs(trigger, profile_version, summary_json)
+                   VALUES (?, ?, ?)""",
+                (trigger, profile_version, json.dumps(summary, ensure_ascii=False)),
+            )
+        return int(cursor.lastrowid)
+
+    def list_monitor_runs(self, limit: int = 20) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT id, trigger, profile_version, summary_json, created_at
+                   FROM monitor_runs ORDER BY id DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["summary"] = json.loads(item.pop("summary_json"))
+            result.append(item)
+        return result
+
+    def analytics_overview(self) -> dict[str, Any]:
+        with self.connect() as connection:
+            source_rows = connection.execute(
+                """SELECT source, COUNT(*) AS count
+                   FROM vacancies GROUP BY source ORDER BY count DESC, source"""
+            ).fetchall()
+            evaluation_rows = connection.execute(
+                """SELECT e.score, e.result_json
+                   FROM evaluations e
+                   WHERE e.id = (
+                       SELECT MAX(latest.id) FROM evaluations latest
+                       WHERE latest.vacancy_id = e.vacancy_id
+                   )"""
+            ).fetchall()
+            feedback_rows = connection.execute(
+                """SELECT f.action, COUNT(*) AS count
+                   FROM feedback f
+                   WHERE f.id = (
+                       SELECT MAX(latest.id) FROM feedback latest
+                       WHERE latest.vacancy_id = f.vacancy_id
+                   )
+                   GROUP BY f.action ORDER BY count DESC, f.action"""
+            ).fetchall()
+
+        buckets = {"under_40": 0, "40_64": 0, "65_79": 0, "80_plus": 0}
+        passed = 0
+        for row in evaluation_rows:
+            score = int(row["score"])
+            result = json.loads(row["result_json"])
+            passed += int(bool(result.get("passed_hard_filters")))
+            if score < 40:
+                buckets["under_40"] += 1
+            elif score < 65:
+                buckets["40_64"] += 1
+            elif score < 80:
+                buckets["65_79"] += 1
+            else:
+                buckets["80_plus"] += 1
+        return {
+            "total_vacancies": len(evaluation_rows),
+            "passed_filters": passed,
+            "source_counts": {row["source"]: row["count"] for row in source_rows},
+            "feedback_counts": {row["action"]: row["count"] for row in feedback_rows},
+            "score_buckets": buckets,
+            "recent_runs": self.list_monitor_runs(10),
+        }
 
     def add_feedback(self, vacancy_id: str, action: str, note: str | None = None) -> None:
         with self.connect() as connection:
